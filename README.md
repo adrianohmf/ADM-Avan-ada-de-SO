@@ -1,2 +1,469 @@
-# ADM-Avan-ada-de-SO
-Adimisnitração avançada de Sistemas Operacionais
+# Administração Avançada de Sistemas Operacionais
+### Semanas 2 a 8 — Fundamentos (Linux + Servidor Web)
+
+> Material de apoio da disciplina, com teoria, comandos, imagens e exercícios.
+> **Ambiente considerado: WSL2 (Windows Subsystem for Linux) com Ubuntu.**
+
+---
+
+## Antes de começar: preparando o WSL2
+
+Todos os comandos deste material foram pensados para rodar dentro do **WSL2**. Alguns pontos importantes:
+
+1. **Instalação** (PowerShell como administrador):
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+2. **Systemd no WSL2**: por padrão pode vir desabilitado. Para habilitar, edite `/etc/wsl.conf` dentro da distribuição:
+   ```ini
+   [boot]
+   systemd=true
+   ```
+   Depois, no PowerShell:
+   ```powershell
+   wsl --shutdown
+   ```
+   E abra o Ubuntu novamente. Sem isso, os comandos `systemctl` da Semana 2 não funcionam.
+3. **Rede**: o WSL2 expõe `localhost` automaticamente para o Windows — ao subir um servidor web na porta 80, ele já pode ser acessado em `http://localhost` no navegador do Windows.
+4. **Limitações importantes**: o WSL2 roda sobre um disco virtual único (`.vhdx`), então **não há discos físicos separados** para praticar LVM "de verdade". Na Semana 4, vamos usar **arquivos de disco virtuais (loop devices)** para simular volumes — o comportamento dos comandos é idêntico ao de um servidor real.
+
+---
+
+## Semana 2 — Gerenciamento de processos e serviços
+
+### Teoria
+
+O **systemd** é o sistema de inicialização (`init`) usado pela maioria das distribuições Linux modernas, incluindo o Ubuntu. Ele é o primeiro processo a rodar (PID 1) e é responsável por iniciar, parar e supervisionar todos os demais serviços (chamados de *units*).
+
+![Gerenciamento de serviços com systemd](images/systemd.png)
+
+Principais conceitos:
+- **Unit**: uma unidade gerenciável pelo systemd (serviço, timer, socket, etc.). Serviços usam a extensão `.service`.
+- **Estado de execução**: `active (running)`, `inactive (dead)`, `failed`.
+- **Habilitado (enabled)**: o serviço inicia automaticamente no boot, independentemente de estar rodando agora.
+
+### Comandos essenciais
+
+```bash
+# Ver status de um serviço
+sudo systemctl status ssh
+
+# Iniciar, parar e reiniciar
+sudo systemctl start ssh
+sudo systemctl stop ssh
+sudo systemctl restart ssh
+
+# Habilitar/desabilitar no boot
+sudo systemctl enable ssh
+sudo systemctl disable ssh
+
+# Listar todos os serviços ativos
+systemctl list-units --type=service --state=running
+
+# Ver logs de um serviço específico
+journalctl -u ssh -f
+```
+
+### Criando um serviço próprio
+
+Crie o arquivo `/etc/systemd/system/meuapp.service`:
+
+```ini
+[Unit]
+Description=Minha aplicação de teste
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -m http.server 8000
+Restart=on-failure
+User=%i
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Depois:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now meuapp.service
+sudo systemctl status meuapp.service
+```
+
+### Exercícios
+
+1. Instale o pacote `apache2` (`sudo apt install apache2`) e pratique start/stop/restart/status.
+2. Crie um serviço systemd customizado que rode um script shell simples (`echo "rodando" >> /tmp/log.txt`) a cada execução.
+3. Use `journalctl -u <serviço> --since "10 min ago"` para investigar os logs recentes de um serviço.
+4. Desafio: faça um serviço falhar de propósito (ex.: aponte para um binário inexistente) e use `journalctl` para diagnosticar o erro.
+
+---
+
+## Semana 3 — Permissões e sistema de arquivos
+
+### Teoria
+
+No Linux, cada arquivo tem um dono (**user**), um grupo (**group**) e permissões para "outros" (**others**). Cada uma dessas categorias pode ter permissão de leitura (**r**), escrita (**w**) e execução (**x**).
+
+![Permissões de arquivos no Linux](images/permissoes.png)
+
+As permissões também podem ser representadas em formato octal:
+
+| Permissão | Valor |
+|---|---|
+| `r` (leitura) | 4 |
+| `w` (escrita) | 2 |
+| `x` (execução) | 1 |
+
+Assim, `rwx` = 4+2+1 = **7**, `r-x` = 4+1 = **5**, `r--` = 4.
+
+Além das permissões básicas, o Linux suporta **ACLs (Access Control Lists)** — permissões mais granulares, permitindo dar acesso a usuários ou grupos específicos além do dono e grupo padrão.
+
+### Comandos essenciais
+
+```bash
+# Ver permissões detalhadas
+ls -la
+
+# Alterar dono e grupo
+sudo chown adriano:devs arquivo.sh
+
+# Alterar permissões (modo octal)
+chmod 754 arquivo.sh
+
+# Alterar permissões (modo simbólico)
+chmod u+x arquivo.sh
+chmod g-w arquivo.sh
+
+# Criar usuários e grupos
+sudo useradd -m aluno1
+sudo groupadd devs
+sudo usermod -aG devs aluno1
+
+# ACLs — dar permissão extra a um usuário específico
+sudo apt install acl
+setfacl -m u:aluno1:rwx pasta_compartilhada/
+getfacl pasta_compartilhada/
+```
+
+### Exercícios
+
+1. Crie uma pasta `/home/compartilhada`, com um grupo `devs`, e configure permissões para que apenas o grupo tenha acesso de escrita.
+2. Crie dois usuários de teste e use ACL para dar a um deles acesso de leitura a um arquivo que originalmente só o dono pode ler.
+3. Explique (por escrito, num arquivo `respostas.md`) a diferença entre `chmod 700` e `chmod 750` em um script.
+4. Desafio: usando `find`, liste todos os arquivos do seu `$HOME` com permissão de escrita para "outros" (`o+w`) — um risco comum de segurança.
+
+---
+
+## Semana 4 — Armazenamento e monitoramento básico
+
+### Teoria
+
+O **LVM (Logical Volume Manager)** permite gerenciar armazenamento de forma flexível, agrupando discos físicos (**Physical Volumes**) em um **Volume Group**, e então criando **Logical Volumes** que podem ser redimensionados a quente.
+
+![Estrutura do LVM](images/lvm.png)
+
+No **WSL2** não existem múltiplos discos físicos disponíveis, então vamos simular usando **arquivos de disco** (loop devices) — os comandos de LVM são exatamente os mesmos que você usaria em um servidor real.
+
+O **journalctl** é a ferramenta de consulta de logs do systemd — centraliza logs do kernel, de serviços e do próprio sistema em um único lugar.
+
+### Comandos essenciais — simulando discos no WSL2
+
+```bash
+# Criar dois arquivos de 1GB para simular discos
+sudo apt install lvm2
+dd if=/dev/zero of=/disco1.img bs=1M count=1024
+dd if=/dev/zero of=/disco2.img bs=1M count=1024
+
+# Associar os arquivos a loop devices
+sudo losetup -fP /disco1.img
+sudo losetup -fP /disco2.img
+losetup -a   # confirme os nomes atribuídos, ex.: /dev/loop0, /dev/loop1
+```
+
+### Comandos essenciais — LVM
+
+```bash
+# Criar os Physical Volumes
+sudo pvcreate /dev/loop0 /dev/loop1
+
+# Criar o Volume Group
+sudo vgcreate meu_vg /dev/loop0 /dev/loop1
+
+# Criar Logical Volumes
+sudo lvcreate -L 800M -n lv_dados meu_vg
+sudo lvcreate -L 800M -n lv_backup meu_vg
+
+# Formatar e montar
+sudo mkfs.ext4 /dev/meu_vg/lv_dados
+sudo mkdir /mnt/dados
+sudo mount /dev/meu_vg/lv_dados /mnt/dados
+
+# Redimensionar a quente
+sudo lvextend -L +200M /dev/meu_vg/lv_dados
+sudo resize2fs /dev/meu_vg/lv_dados
+```
+
+### Comandos essenciais — journalctl
+
+```bash
+# Logs do boot atual
+journalctl -b
+
+# Logs de um serviço específico
+journalctl -u nginx
+
+# Acompanhar logs em tempo real
+journalctl -f
+
+# Logs de um período específico
+journalctl --since "2026-08-01" --until "2026-08-10"
+```
+
+### Exercícios
+
+1. Simule dois discos, crie um Volume Group e um Logical Volume de 500MB, formate e monte em `/mnt/teste`.
+2. Redimensione o Logical Volume criado para 700MB sem desmontá-lo.
+3. Use `journalctl -p err` para listar apenas mensagens de erro do sistema.
+4. Desafio: pesquise e explique a diferença entre um **snapshot de LVM** e um backup tradicional.
+
+---
+
+## Semana 5 — Shell scripting para automação
+
+### Teoria
+
+Shell scripts automatizam tarefas repetitivas de administração. Combinados ao **cron**, permitem agendar execuções automáticas em horários específicos.
+
+![Campos do crontab](images/cron.png)
+
+Estrutura básica de um script:
+
+```bash
+#!/bin/bash
+# comentário explicando o script
+
+VARIAVEL="valor"
+
+if [ condição ]; then
+    comando
+fi
+
+for item in lista; do
+    comando "$item"
+done
+```
+
+### Comandos e exemplos
+
+```bash
+# Tornar um script executável
+chmod +x script.sh
+./script.sh
+```
+
+Exemplo — script de backup simples (`backup.sh`):
+
+```bash
+#!/bin/bash
+DATA=$(date +%Y-%m-%d_%H-%M)
+ORIGEM="/home/adriano/dados"
+DESTINO="/home/adriano/backups/backup_$DATA.tar.gz"
+
+tar -czf "$DESTINO" "$ORIGEM"
+echo "Backup criado em $DESTINO"
+```
+
+Agendando com cron:
+
+```bash
+crontab -e
+```
+
+Adicione a linha (executa todo dia às 2h da manhã):
+
+```
+0 2 * * * /home/adriano/backup.sh >> /home/adriano/backup.log 2>&1
+```
+
+### Exercícios
+
+1. Escreva um script que verifique o uso de disco (`df -h`) e envie um alerta (`echo` em um arquivo de log) se o uso passar de 80%.
+2. Agende esse script para rodar a cada 15 minutos usando cron.
+3. Escreva um script que receba um nome de pasta como argumento (`$1`) e conte quantos arquivos existem dentro dela.
+4. Desafio: crie um script que rotacione logs — renomeie `app.log` para `app.log.antigo` e crie um `app.log` vazio, apenas se o arquivo atual passar de 1MB.
+
+---
+
+## Semana 6 — Introdução a servidores web
+
+### Teoria
+
+O protocolo **HTTP** define como clientes (navegadores) e servidores web trocam informações: o cliente envia uma **requisição** (ex.: `GET /index.html`) e o servidor responde com um **status code** e o conteúdo solicitado.
+
+![Requisição e resposta HTTP](images/http.png)
+
+O **Nginx** e o **Apache** são os servidores web mais usados no mercado. O Nginx se destaca por lidar melhor com muitas conexões simultâneas e é frequentemente usado também como proxy reverso (Semana 7).
+
+### Comandos essenciais
+
+```bash
+# Instalar o Nginx no WSL2
+sudo apt update
+sudo apt install nginx
+
+# Como o WSL2 não usa systemd habilitado por padrão em algumas versões, inicie manualmente se necessário:
+sudo service nginx start
+# ou, com systemd habilitado (ver seção inicial deste material):
+sudo systemctl start nginx
+sudo systemctl enable nginx
+```
+
+Página padrão fica em `/var/www/html/index.nginx-debian.html`. Para servir sua própria página:
+
+```bash
+sudo nano /var/www/html/index.html
+```
+
+```html
+<!DOCTYPE html>
+<html>
+<head><title>Minha primeira página</title></head>
+<body>
+  <h1>Funcionando no WSL2!</h1>
+</body>
+</html>
+```
+
+Acesse pelo navegador do Windows: `http://localhost`
+
+### Exercícios
+
+1. Instale o Nginx e publique uma página HTML estática simples com seu nome e a disciplina.
+2. Altere a porta padrão do Nginx (de 80 para 8080) editando `/etc/nginx/sites-available/default` e reinicie o serviço.
+3. Compare, em texto, uma vantagem e uma desvantagem do Nginx frente ao Apache.
+4. Desafio: instale também o Apache (`apache2`) em outra porta e mantenha os dois rodando simultaneamente sem conflito.
+
+---
+
+## Semana 7 — Proxy reverso
+
+### Teoria
+
+Um **proxy reverso** fica entre o cliente e um ou mais servidores de aplicação, recebendo as requisições e encaminhando-as para o backend correto — sem que o cliente saiba diretamente com qual servidor está falando.
+
+![Proxy reverso com Nginx](images/reverse_proxy.png)
+
+Isso é útil para: distribuir carga entre múltiplas instâncias, ocultar a estrutura interna da infraestrutura, e centralizar configurações de segurança (como o TLS, visto na próxima semana).
+
+### Comandos e configuração
+
+Suba uma aplicação simples para servir de backend (ex.: um servidor HTTP em Python):
+
+```bash
+mkdir ~/app-teste && cd ~/app-teste
+python3 -m http.server 3000
+```
+
+Configure o Nginx como proxy reverso, editando `/etc/nginx/sites-available/default`:
+
+```nginx
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+Aplique a configuração:
+
+```bash
+sudo nginx -t          # testa a sintaxe antes de aplicar
+sudo systemctl reload nginx
+```
+
+### Exercícios
+
+1. Suba duas aplicações simples em portas diferentes (3000 e 3001) e configure o Nginx para redirecionar `/app1` para uma e `/app2` para outra.
+2. Pesquise e configure balanceamento de carga simples entre duas instâncias da mesma aplicação usando a diretiva `upstream` do Nginx.
+3. Explique, em texto, por que normalmente não se expõe a aplicação diretamente à internet, preferindo colocá-la atrás de um proxy reverso.
+4. Desafio: adicione um cabeçalho de resposta customizado (`add_header`) no Nginx e confirme que ele aparece na resposta usando `curl -I http://localhost`.
+
+---
+
+## Semana 8 — TLS/SSL
+
+### Teoria
+
+O **TLS** (Transport Layer Security, sucessor do SSL) garante que a comunicação entre cliente e servidor seja criptografada e autenticada. É o que torna possível o **HTTPS**.
+
+![Handshake TLS simplificado](images/tls.png)
+
+De forma simplificada: o navegador inicia a conexão, o servidor apresenta um **certificado digital** (emitido por uma autoridade certificadora, como o **Let's Encrypt**), e a partir daí toda comunicação passa a ser criptografada.
+
+### Comandos essenciais
+
+Para ambientes reais expostos à internet, o **Certbot** automatiza a emissão de certificados Let's Encrypt:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d seudominio.com
+```
+
+> No WSL2, como normalmente não há um domínio público apontando para a máquina, usamos um **certificado autoassinado** apenas para fins didáticos:
+
+```bash
+sudo mkdir -p /etc/nginx/ssl
+sudo openssl req -x509 -nodes -days 365 \
+  -newkey rsa:2048 \
+  -keyout /etc/nginx/ssl/selfsigned.key \
+  -out /etc/nginx/ssl/selfsigned.crt \
+  -subj "/CN=localhost"
+```
+
+Configuração do Nginx para HTTPS (`/etc/nginx/sites-available/default`):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name localhost;
+
+    ssl_certificate     /etc/nginx/ssl/selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+    }
+}
+```
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Acesse `https://localhost` (o navegador vai alertar que o certificado não é confiável — normal para um certificado autoassinado).
+
+### Exercícios
+
+1. Gere um certificado autoassinado e configure o Nginx para servir sua aplicação via HTTPS na porta 443.
+2. Configure um redirecionamento automático de HTTP (porta 80) para HTTPS (porta 443).
+3. Use `openssl x509 -in selfsigned.crt -text -noout` para inspecionar os dados do certificado gerado e identifique a data de validade.
+4. Desafio (consolidação da Unidade 1): tendo a aplicação rodando com Nginx, proxy reverso e HTTPS configurados manualmente, documente em um `README.md` todos os passos realizados — esse será a base do seu material de apoio para o seminário avaliativo da semana 9.
+
+---
+
+## Checklist geral (Semanas 2 a 8)
+
+- [ ] Systemd habilitado no WSL2 e serviços customizados criados
+- [ ] Permissões, usuários, grupos e ACLs praticados
+- [ ] LVM simulado com loop devices e volumes redimensionados
+- [ ] Scripts de automação criados e agendados via cron
+- [ ] Nginx instalado e servindo uma página própria
+- [ ] Proxy reverso configurado apontando para uma aplicação local
+- [ ] HTTPS configurado com certificado (autoassinado ou Let's Encrypt)
