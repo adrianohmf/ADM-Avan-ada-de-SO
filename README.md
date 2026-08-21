@@ -31,7 +31,73 @@ Todos os comandos deste material foram pensados para rodar dentro do **WSL2**. A
 
 ## Semana 2 — Gerenciamento de processos e serviços
 
-### Teoria
+### Teoria — processos
+
+Todo programa em execução no Linux é um **processo**, identificado por um **PID** (Process ID). Todo processo, exceto o primeiro, tem um processo pai — identificado pelo **PPID** — formando uma hierarquia.
+
+**Visualizar processos:**
+
+```bash
+# Lista todos os processos do sistema (formato BSD)
+ps aux
+
+# Lista todos os processos do sistema (formato padrão UNIX)
+ps -ef
+
+# Visão dinâmica, em tempo real, de CPU e memória
+top
+
+# Versão mais amigável do top (pode exigir instalação: sudo apt install htop)
+htop
+```
+
+**PID, PPID e hierarquia de processos:**
+
+```bash
+# Mostra a árvore de processos (pai/filho)
+pstree
+
+# Mostra a árvore com PIDs
+pstree -p
+```
+
+**Estados de um processo:** ao rodar `ps aux`, a coluna `STAT` mostra o estado atual:
+- `R` — rodando (running)
+- `S` — dormindo, aguardando algum evento (sleeping)
+- `Z` — zumbi, processo finalizado mas ainda não "limpo" pelo pai (zombie)
+- `T` — parado (stopped)
+
+**Sinais e finalização:**
+
+```bash
+# Encerramento "educado" — pede para o processo finalizar (SIGTERM)
+kill -15 <PID>
+
+# Encerramento forçado — mata o processo imediatamente (SIGKILL)
+kill -9 <PID>
+
+# Mata todos os processos com um determinado nome
+killall firefox
+
+# Mata processos por padrão de nome/linha de comando
+pkill -f http.server
+```
+
+> Prefira sempre tentar `kill -15` antes de `kill -9`: o `SIGTERM` permite que o processo finalize tarefas pendentes (salvar arquivos, fechar conexões) antes de encerrar. O `SIGKILL` interrompe na hora, sem chance de limpeza.
+
+**Processos em foreground/background:**
+
+```bash
+# Roda um processo em segundo plano (background)
+sleep 100 &
+
+# Suspende o processo que está rodando em primeiro plano (foreground)
+# Ctrl+Z
+```
+
+Quando você aperta `Ctrl+Z`, o processo em foreground é pausado (estado `T`) e devolve o terminal para você — ele continua existindo, mas parado, até ser retomado ou finalizado.
+
+### Teoria — systemd
 
 O **systemd** é o sistema de inicialização (`init`) usado pela maioria das distribuições Linux modernas, incluindo o Ubuntu. Ele é o primeiro processo a rodar (PID 1) e é responsável por iniciar, parar e supervisionar todos os demais serviços (chamados de *units*).
 
@@ -42,7 +108,7 @@ Principais conceitos:
 - **Estado de execução**: `active (running)`, `inactive (dead)`, `failed`.
 - **Habilitado (enabled)**: o serviço inicia automaticamente no boot, independentemente de estar rodando agora.
 
-### Comandos essenciais
+### Comandos essenciais — systemd
 
 ```bash
 # Ver status de um serviço
