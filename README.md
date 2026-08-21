@@ -76,7 +76,7 @@ After=network.target
 [Service]
 ExecStart=/usr/bin/python3 -m http.server 8000
 Restart=on-failure
-User=%i
+User=www-data
 
 [Install]
 WantedBy=multi-user.target
@@ -90,13 +90,109 @@ sudo systemctl enable --now meuapp.service
 sudo systemctl status meuapp.service
 ```
 
+Teste se o serviço está realmente rodando:
+
+```bash
+ps -aux | grep http.server
+```
+
+Você deve ver um processo do Python rodando com o usuário `www-data`. Em seguida, abra o navegador (no Windows, se estiver no WSL2) e acesse:
+
+```
+http://localhost:8000
+```
+
+Se tudo estiver certo, o navegador vai mostrar a listagem de arquivos do diretório onde o serviço foi iniciado.
+
 ### Exercícios
 
 1. Instale o pacote `apache2` (`sudo apt install apache2`) e pratique start/stop/restart/status.
-2. Crie um serviço systemd customizado que rode um script shell simples (`/bin/sh -c 'echo "rodando em $(date +%%Y-%%m-%%d_%%H:%%M:%%S)" >> /tmp/log.txt'
-`) a cada execução.
+2. Crie um serviço systemd customizado que rode um script shell simples (`/bin/sh -c 'echo "rodando em $(date +%Y-%m-%d_%H:%M:%S)" >> /tmp/log.txt'`) a cada execução.
 3. Use `journalctl -u <serviço> --since "10 min ago"` para investigar os logs recentes de um serviço.
 4. Desafio: faça um serviço falhar de propósito (ex.: aponte para um binário inexistente) e use `journalctl` para diagnosticar o erro.
+
+---
+
+## Complemento — Acesso SSH, rede básica e teste de conectividade
+
+> Conteúdo de apoio às Semanas 2-3, usado sempre que for necessário acessar ou testar um servidor remotamente.
+
+### Teoria
+
+O **SSH (Secure Shell)** é o protocolo padrão para acesso remoto e seguro a servidores Linux — substitui protocolos antigos e não criptografados como Telnet. A autenticação pode ser feita por senha ou, de forma mais segura, por **par de chaves** (privada no cliente, pública no servidor).
+
+![Acesso remoto via SSH](images/ssh.png)
+
+Antes de acessar um servidor, também é importante saber **configurar e diagnosticar a rede**: qual IP a máquina possui, se ela enxerga a internet, se uma porta específica está acessível, etc.
+
+### Comandos essenciais — SSH
+
+```bash
+# Instalar e habilitar o servidor SSH
+sudo apt install openssh-server
+sudo systemctl enable --now ssh
+sudo systemctl status ssh
+
+# Gerar um par de chaves no cliente
+ssh-keygen -t ed25519 -C "adriano@ifpe"
+
+# Copiar a chave pública para o servidor (autenticação sem senha)
+ssh-copy-id usuario@host
+
+# Conectar
+ssh usuario@host
+ssh usuario@host -p 2222   # se a porta padrão foi alterada
+
+# Copiar arquivos via SSH (scp)
+scp arquivo.txt usuario@host:/home/usuario/
+```
+
+> **No WSL2**: o servidor SSH roda normalmente dentro da distribuição. Para acessar o WSL2 a partir de outra máquina da rede, é preciso configurar port forwarding no Windows (`netsh interface portproxy`), já que o WSL2 usa uma rede NAT interna. Para uso local (cliente e servidor na mesma máquina), basta `ssh usuario@localhost`.
+
+### Comandos essenciais — configuração básica de rede
+
+```bash
+# Ver endereços IP da máquina
+ip addr show
+hostname -I          # atalho para o IP no WSL2
+
+# Ver e alterar o hostname
+hostname
+sudo hostnamectl set-hostname meu-servidor
+
+# Ver a tabela de rotas
+ip route
+
+# Ver servidores DNS configurados
+cat /etc/resolv.conf
+```
+
+### Comandos essenciais — teste de conectividade
+
+```bash
+# Testar se um host responde (ICMP)
+ping -c 4 google.com
+
+# Testar se uma porta específica está aberta
+nc -zv localhost 22
+nc -zv localhost 80
+
+# Ver conexões e portas em escuta na própria máquina
+ss -tulpn
+
+# Testar uma requisição HTTP diretamente do terminal
+curl -I http://localhost
+
+# Rastrear o caminho até um host (quando disponível)
+traceroute google.com
+```
+
+### Exercícios
+
+1. Habilite o servidor SSH no seu WSL2 e conecte-se a ele localmente usando `ssh usuario@localhost`.
+2. Gere um par de chaves SSH e configure o acesso sem senha (`ssh-copy-id`) para o seu próprio usuário local.
+3. Use `ss -tulpn` para identificar em quais portas o Nginx (Semana 6) e o SSH estão escutando.
+4. Desafio: usando `nc -zv`, escreva um pequeno script que teste a conectividade de 3 portas diferentes (22, 80, 443) e informe quais estão abertas.
 
 ---
 
@@ -462,6 +558,9 @@ Acesse `https://localhost` (o navegador vai alertar que o certificado não é co
 ## Checklist geral (Semanas 2 a 8)
 
 - [ ] Systemd habilitado no WSL2 e serviços customizados criados
+- [ ] Acesso SSH configurado (com autenticação por chave) e testado localmente
+- [ ] Configuração básica de rede verificada (IP, hostname, DNS, rotas)
+- [ ] Teste de conectividade realizado (ping, nc, ss, curl)
 - [ ] Permissões, usuários, grupos e ACLs praticados
 - [ ] LVM simulado com loop devices e volumes redimensionados
 - [ ] Scripts de automação criados e agendados via cron
