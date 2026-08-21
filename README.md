@@ -124,7 +124,7 @@ sudo systemctl enable ssh
 sudo systemctl disable ssh
 
 # Listar todos os serviços ativos
-systemctl list-units --type=service --state=running
+systemctl list-units --type=service
 
 # Ver logs de um serviço específico
 journalctl -u ssh -f
