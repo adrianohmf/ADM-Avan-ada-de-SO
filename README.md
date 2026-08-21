@@ -93,7 +93,8 @@ sudo systemctl status meuapp.service
 ### Exercícios
 
 1. Instale o pacote `apache2` (`sudo apt install apache2`) e pratique start/stop/restart/status.
-2. Crie um serviço systemd customizado que rode um script shell simples (`echo "rodando" >> /tmp/log.txt`) a cada execução.
+2. Crie um serviço systemd customizado que rode um script shell simples (`/bin/sh -c 'echo "rodando em $(date +%%Y-%%m-%%d_%%H:%%M:%%S)" >> /tmp/log.txt'
+`) a cada execução.
 3. Use `journalctl -u <serviço> --since "10 min ago"` para investigar os logs recentes de um serviço.
 4. Desafio: faça um serviço falhar de propósito (ex.: aponte para um binário inexistente) e use `journalctl` para diagnosticar o erro.
 
