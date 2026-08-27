@@ -124,7 +124,7 @@ sudo systemctl enable ssh
 sudo systemctl disable ssh
 
 # Listar todos os serviços ativos
-systemctl list-units --type=service
+systemctl list-units --type=service --state=running
 
 # Ver logs de um serviço específico
 journalctl -u ssh -f
@@ -189,6 +189,24 @@ O **SSH (Secure Shell)** é o protocolo padrão para acesso remoto e seguro a se
 
 ![Acesso remoto via SSH](images/ssh.png)
 
+#### Par de chaves: pública e privada
+
+A autenticação por chave usa **criptografia assimétrica**: em vez de uma única senha, são geradas duas chaves matematicamente relacionadas, mas com papéis diferentes:
+
+- **Chave privada**: fica guardada apenas no computador do usuário (ex.: `~/.ssh/id_ed25519`). Nunca deve ser compartilhada, copiada para outra máquina ou enviada por e-mail/chat. É ela que "prova" a identidade do usuário.
+- **Chave pública**: pode ser distribuída livremente (ex.: `~/.ssh/id_ed25519.pub`). É copiada para dentro do servidor, no arquivo `~/.ssh/authorized_keys` do usuário remoto.
+
+O funcionamento, de forma simplificada:
+
+1. O cliente pede para se conectar ao servidor.
+2. O servidor verifica se existe, no `authorized_keys`, uma chave pública correspondente àquele cliente.
+3. O servidor envia um desafio criptografado com a chave pública.
+4. Só quem possui a **chave privada** correspondente consegue responder corretamente a esse desafio — sem nunca precisar transmitir a chave privada pela rede.
+
+Por isso esse modelo é mais seguro que senha: mesmo que alguém intercepte toda a comunicação, não há uma senha trafegando que possa ser roubada, e a chave privada nunca sai da máquina do usuário.
+
+> Boas práticas: proteja a chave privada com uma **passphrase** (senha adicional pedida ao usá-la), nunca a compartilhe, e use uma chave diferente por dispositivo/contexto quando possível.
+
 Antes de acessar um servidor, também é importante saber **configurar e diagnosticar a rede**: qual IP a máquina possui, se ela enxerga a internet, se uma porta específica está acessível, etc.
 
 ### Comandos essenciais — SSH
@@ -213,7 +231,118 @@ ssh usuario@host -p 2222   # se a porta padrão foi alterada
 scp arquivo.txt usuario@host:/home/usuario/
 ```
 
-> **No WSL2**: o servidor SSH roda normalmente dentro da distribuição. Para acessar o WSL2 a partir de outra máquina da rede, é preciso configurar port forwarding no Windows (`netsh interface portproxy`), já que o WSL2 usa uma rede NAT interna. Para uso local (cliente e servidor na mesma máquina), basta `ssh usuario@localhost`.
+#### Exemplo prático no WSL2 — usando `localhost`
+
+No WSL2, o cliente e o servidor SSH normalmente estão na mesma distribuição Linux. Nesse caso, em vez de um IP remoto, usamos `localhost`:
+
+```bash
+# 1. Gere o par de chaves (se ainda não tiver)
+ssh-keygen -t ed25519 -C "adriano@ifpe" -N ""
+# O -N "" já define a passphrase como vazia, para um acesso totalmente sem senha
+# (aceite o caminho padrão apertando Enter na pergunta do local do arquivo)
+
+# 2. Garanta que o servidor SSH está rodando
+sudo systemctl enable --now ssh
+sudo systemctl status ssh
+
+# 3. Copie sua própria chave pública para o seu usuário
+ssh-copy-id seu_usuario@localhost
+# Vai pedir a senha do usuário Linux uma última vez
+
+# 4. Teste — não deve mais pedir nem senha, nem passphrase
+ssh seu_usuario@localhost
+```
+
+> **Já criou a chave com passphrase por engano e ela está sendo pedida a cada acesso?** Apague e gere de novo sem passphrase:
+> ```bash
+> rm ~/.ssh/id_ed25519 ~/.ssh/id_ed25519.pub
+> ssh-keygen -t ed25519 -C "adriano@ifpe" -N ""
+> ssh-copy-id seu_usuario@localhost
+> ```
+> Uma passphrase vazia é aceitável em ambiente de estudo/laboratório, mas não é recomendada em servidores de produção — lá, o ideal é manter a passphrase e usar um `ssh-agent` para não digitá-la a cada conexão.
+
+> Se o objetivo for acessar um servidor de verdade em outra máquina da rede, basta trocar `localhost` pelo IP real do servidor (`usuario@192.168.x.x`) — o restante do processo é idêntico. Nesse caso, para acessar o WSL2 a partir de fora, também é preciso configurar port forwarding no Windows (`netsh interface portproxy`), já que o WSL2 usa uma rede NAT interna.
+
+#### Alterando a porta padrão do SSH
+
+Por padrão, o SSH escuta na porta **22** — como é bem conhecida, é também a porta mais visada em tentativas automatizadas de invasão. Uma prática comum de hardening é alterá-la para uma porta não padrão, como **7531**.
+
+```bash
+# Edite o arquivo de configuração do servidor SSH
+sudo nano /etc/ssh/sshd_config
+```
+
+Localize a linha `#Port 22`, descomente e altere:
+
+```
+Port 7531
+```
+
+Salve o arquivo e reinicie o serviço para aplicar:
+
+```bash
+sudo systemctl restart ssh
+```
+
+A partir de agora, conecte sempre informando a porta com `-p`:
+
+```bash
+ssh seu_usuario@localhost -p 7531
+ssh-copy-id -p 7531 seu_usuario@localhost
+scp -P 7531 arquivo.txt seu_usuario@localhost:/home/seu_usuario/
+```
+
+> Repare que o parâmetro de porta é `-p` minúsculo no `ssh` e no `ssh-copy-id`, mas `-P` maiúsculo no `scp` — uma pegadinha comum.
+
+Confirme que o serviço está de fato escutando na nova porta:
+
+```bash
+ss -tulpn | grep ssh
+```
+
+> **No WSL2**: se for acessar essa porta a partir de outra máquina da rede (fora do próprio WSL2), lembre-se de ajustar também o port forwarding do Windows para a nova porta (`netsh interface portproxy add v4tov4 listenport=7531 ...`).
+
+#### Usuários com sudo e por que evitar o root
+
+O **root** é o superusuário do Linux — tem acesso irrestrito a todo o sistema. Usar o root diretamente no dia a dia (inclusive para logar via SSH) é uma prática desaconselhada, por alguns motivos:
+
+- **Nenhum limite de segurança**: um erro de digitação em um comando como `rm -rf` executado como root pode destruir o sistema inteiro, sem qualquer proteção.
+- **Rastreabilidade**: em um servidor com vários administradores, se todos usam a conta `root`, não dá para saber quem executou o quê. Com usuários individuais, cada ação fica associada a uma pessoa.
+- **Superfície de ataque**: o nome de usuário `root` já é conhecido por qualquer atacante — é o primeiro login que tentativas automatizadas de invasão testam. Desabilitar o login SSH do root elimina esse alvo óbvio.
+
+A prática recomendada é criar um **usuário comum com permissão de sudo** — ele executa o dia a dia normalmente como um usuário sem privilégios, e usa `sudo` apenas quando precisa de uma ação administrativa específica, comando a comando.
+
+```bash
+# Criar um novo usuário
+sudo adduser adriano
+
+# Adicionar esse usuário ao grupo sudo (Ubuntu/Debian)
+sudo usermod -aG sudo adriano
+
+# Confirmar que o usuário está no grupo
+groups adriano
+```
+
+Depois disso, o usuário `adriano` pode rodar comandos administrativos prefixando com `sudo`:
+
+```bash
+sudo apt update
+sudo systemctl restart nginx
+```
+
+Para **desabilitar o login root via SSH**, edite `/etc/ssh/sshd_config`:
+
+```
+PermitRootLogin no
+```
+
+E reinicie o serviço:
+
+```bash
+sudo systemctl restart ssh
+```
+
+> A partir desse ponto, qualquer acesso remoto precisa ser feito por um usuário nomeado com sudo — o que também facilita auditoria, já que cada ação fica associada a uma conta específica, e não a um "root" genérico e compartilhado.
 
 ### Comandos essenciais — configuração básica de rede
 
@@ -249,9 +378,15 @@ ss -tulpn
 # Testar uma requisição HTTP diretamente do terminal
 curl -I http://localhost
 
-# Rastrear o caminho até um host (quando disponível)
+# Rastrear o caminho até um host (quando disponível no Linux/WSL2)
 traceroute google.com
 ```
+
+> **No Windows** (PowerShell ou CMD, fora do WSL2), o comando equivalente é o `tracert`:
+> ```powershell
+> tracert google.com
+> ```
+> Ambos mostram os "saltos" (roteadores) pelos quais os pacotes passam até chegar ao destino — útil para identificar em qual ponto da rede uma conexão está lenta ou falhando. A diferença é só o nome do comando e o sistema operacional onde ele roda: `traceroute` no Linux/WSL2, `tracert` no Windows.
 
 ### Exercícios
 
