@@ -211,46 +211,30 @@ Antes de acessar um servidor, também é importante saber **configurar e diagnos
 
 ### Comandos essenciais — SSH
 
+No WSL2, o cliente e o servidor SSH normalmente estão na mesma distribuição Linux — por isso, em vez de um IP remoto, usamos `localhost`:
+
 ```bash
-# Instalar e habilitar o servidor SSH
+# 1. Instalar e habilitar o servidor SSH
 sudo apt install openssh-server
 sudo systemctl enable --now ssh
 sudo systemctl status ssh
 
-# Gerar um par de chaves no cliente
-ssh-keygen -t ed25519 -C "adriano@ifpe"
-
-# Copiar a chave pública para o servidor (autenticação sem senha)
-ssh-copy-id usuario@host
-
-# Conectar
-ssh usuario@host
-ssh usuario@host -p 2222   # se a porta padrão foi alterada
-
-# Copiar arquivos via SSH (scp)
-scp arquivo.txt usuario@host:/home/usuario/
-```
-
-#### Exemplo prático no WSL2 — usando `localhost`
-
-No WSL2, o cliente e o servidor SSH normalmente estão na mesma distribuição Linux. Nesse caso, em vez de um IP remoto, usamos `localhost`:
-
-```bash
-# 1. Gere o par de chaves (se ainda não tiver)
+# 2. Gerar um par de chaves no cliente
 ssh-keygen -t ed25519 -C "adriano@ifpe" -N ""
 # O -N "" já define a passphrase como vazia, para um acesso totalmente sem senha
 # (aceite o caminho padrão apertando Enter na pergunta do local do arquivo)
 
-# 2. Garanta que o servidor SSH está rodando
-sudo systemctl enable --now ssh
-sudo systemctl status ssh
-
-# 3. Copie sua própria chave pública para o seu usuário
+# 3. Copiar a chave pública para o servidor (autenticação sem senha)
 ssh-copy-id seu_usuario@localhost
 # Vai pedir a senha do usuário Linux uma última vez
 
-# 4. Teste — não deve mais pedir nem senha, nem passphrase
+# 4. Conectar — não deve mais pedir nem senha, nem passphrase
 ssh seu_usuario@localhost
+ssh seu_usuario@localhost -p 2222   # se a porta padrão foi alterada
+
+# 5. Copiar arquivos via SSH (scp)
+touch arquivo.txt
+scp arquivo.txt adriano@127.0.0.1:~/
 ```
 
 > **Já criou a chave com passphrase por engano e ela está sendo pedida a cada acesso?** Apague e gere de novo sem passphrase:
