@@ -6,6 +6,24 @@
 
 ---
 
+## Sumário
+
+- [Antes de começar: preparando o WSL2](#antes-de-começar-preparando-o-wsl2)
+- [Semana 2 — Gerenciamento de processos e serviços](#semana-2--gerenciamento-de-processos-e-serviços)
+- [Complemento — Acesso SSH, rede básica e teste de conectividade](#complemento--acesso-ssh-rede-básica-e-teste-de-conectividade)
+  - [Par de chaves: pública e privada](#par-de-chaves-pública-e-privada)
+  - [Usuários com sudo e por que evitar o root](#usuários-com-sudo-e-por-que-evitar-o-root)
+  - [Configurando IP fixo no Ubuntu Server](#configurando-ip-fixo-no-ubuntu-server)
+- [Semana 3 — Permissões e sistema de arquivos](#semana-3--permissões-e-sistema-de-arquivos)
+- [Semana 4 — Armazenamento e monitoramento básico](#semana-4--armazenamento-e-monitoramento-básico)
+- [Semana 5 — Shell scripting para automação](#semana-5--shell-scripting-para-automação)
+- [Semana 6 — Introdução a servidores web](#semana-6--introdução-a-servidores-web)
+- [Semana 7 — Proxy reverso](#semana-7--proxy-reverso)
+- [Semana 8 — TLS/SSL](#semana-8--tlsssl)
+- [Checklist geral (Semanas 2 a 8)](#checklist-geral-semanas-2-a-8)
+
+---
+
 ## Antes de começar: preparando o WSL2
 
 Todos os comandos deste material foram pensados para rodar dentro do **WSL2**. Alguns pontos importantes:
@@ -14,7 +32,12 @@ Todos os comandos deste material foram pensados para rodar dentro do **WSL2**. A
    ```powershell
    wsl --install -d Ubuntu
    ```
-2. **Systemd no WSL2**: por padrão pode vir desabilitado. Para habilitar, edite `/etc/wsl.conf` dentro da distribuição:
+2. **Atualize o sistema** logo após instalar (e sempre que for retomar os estudos após um tempo parado):
+   ```bash
+   sudo apt update && sudo apt dist-upgrade
+   ```
+   O `apt update` atualiza a lista de pacotes disponíveis, e o `apt dist-upgrade` instala as versões mais novas, inclusive lidando com mudanças de dependências entre pacotes (diferente do `apt upgrade`, mais conservador).
+3. **Systemd no WSL2**: por padrão pode vir desabilitado. Para habilitar, edite `/etc/wsl.conf` dentro da distribuição:
    ```ini
    [boot]
    systemd=true
@@ -24,8 +47,8 @@ Todos os comandos deste material foram pensados para rodar dentro do **WSL2**. A
    wsl --shutdown
    ```
    E abra o Ubuntu novamente. Sem isso, os comandos `systemctl` da Semana 2 não funcionam.
-3. **Rede**: o WSL2 expõe `localhost` automaticamente para o Windows — ao subir um servidor web na porta 80, ele já pode ser acessado em `http://localhost` no navegador do Windows.
-4. **Limitações importantes**: o WSL2 roda sobre um disco virtual único (`.vhdx`), então **não há discos físicos separados** para praticar LVM "de verdade". Na Semana 4, vamos usar **arquivos de disco virtuais (loop devices)** para simular volumes — o comportamento dos comandos é idêntico ao de um servidor real.
+4. **Rede**: o WSL2 expõe `localhost` automaticamente para o Windows — ao subir um servidor web na porta 80, ele já pode ser acessado em `http://localhost` no navegador do Windows.
+5. **Limitações importantes**: o WSL2 roda sobre um disco virtual único (`.vhdx`), então **não há discos físicos separados** para praticar LVM "de verdade". Na Semana 4, vamos usar **arquivos de disco virtuais (loop devices)** para simular volumes — o comportamento dos comandos é idêntico ao de um servidor real.
 
 ---
 
@@ -330,6 +353,61 @@ ip route
 
 # Ver servidores DNS configurados
 cat /etc/resolv.conf
+```
+
+#### Configurando IP fixo no Ubuntu Server
+
+> Esta seção vale para um **Ubuntu Server real ou em uma VM** (ex.: VirtualBox, Hyper-V, ou um servidor na nuvem) — o WSL2 gerencia sua própria rede virtual internamente e não usa esse método.
+
+O Ubuntu Server (desde a versão 18.04) usa o **Netplan** para configurar rede, com arquivos YAML em `/etc/netplan/`.
+
+1. Identifique o nome da sua interface de rede:
+```bash
+ip addr show
+```
+Normalmente algo como `eth0` ou `enp0s3`.
+
+2. Veja o arquivo de configuração existente (o nome pode variar):
+```bash
+ls /etc/netplan/
+sudo cat /etc/netplan/00-installer-config.yaml
+```
+
+3. Edite o arquivo para definir um IP fixo:
+```bash
+sudo nano /etc/netplan/00-installer-config.yaml
+```
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: no
+      addresses:
+        - 192.168.1.50/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+```
+
+> Atenção com a indentação no YAML — ela é obrigatória e sensível a espaços (não use tabs).
+
+4. Aplique a configuração:
+```bash
+sudo netplan apply
+```
+
+5. Confirme que o novo IP foi atribuído:
+```bash
+ip addr show eth0
+```
+
+6. Teste a conectividade após a mudança:
+```bash
+ping -c 4 8.8.8.8
 ```
 
 ### Comandos essenciais — teste de conectividade
