@@ -247,45 +247,6 @@ scp arquivo.txt adriano@127.0.0.1:~/
 
 > Se o objetivo for acessar um servidor de verdade em outra máquina da rede, basta trocar `localhost` pelo IP real do servidor (`usuario@192.168.x.x`) — o restante do processo é idêntico. Nesse caso, para acessar o WSL2 a partir de fora, também é preciso configurar port forwarding no Windows (`netsh interface portproxy`), já que o WSL2 usa uma rede NAT interna.
 
-#### Alterando a porta padrão do SSH
-
-Por padrão, o SSH escuta na porta **22** — como é bem conhecida, é também a porta mais visada em tentativas automatizadas de invasão. Uma prática comum de hardening é alterá-la para uma porta não padrão, como **7531**.
-
-```bash
-# Edite o arquivo de configuração do servidor SSH
-sudo nano /etc/ssh/sshd_config
-```
-
-Localize a linha `#Port 22`, descomente e altere:
-
-```
-Port 7531
-```
-
-Salve o arquivo e reinicie o serviço para aplicar:
-
-```bash
-sudo systemctl restart ssh
-```
-
-A partir de agora, conecte sempre informando a porta com `-p`:
-
-```bash
-ssh seu_usuario@localhost -p 7531
-ssh-copy-id -p 7531 seu_usuario@localhost
-scp -P 7531 arquivo.txt seu_usuario@localhost:/home/seu_usuario/
-```
-
-> Repare que o parâmetro de porta é `-p` minúsculo no `ssh` e no `ssh-copy-id`, mas `-P` maiúsculo no `scp` — uma pegadinha comum.
-
-Confirme que o serviço está de fato escutando na nova porta:
-
-```bash
-ss -tulpn | grep ssh
-```
-
-> **No WSL2**: se for acessar essa porta a partir de outra máquina da rede (fora do próprio WSL2), lembre-se de ajustar também o port forwarding do Windows para a nova porta (`netsh interface portproxy add v4tov4 listenport=7531 ...`).
-
 #### Usuários com sudo e por que evitar o root
 
 O **root** é o superusuário do Linux — tem acesso irrestrito a todo o sistema. Usar o root diretamente no dia a dia (inclusive para logar via SSH) é uma prática desaconselhada, por alguns motivos:
@@ -298,32 +259,57 @@ A prática recomendada é criar um **usuário comum com permissão de sudo** —
 
 ```bash
 # Criar um novo usuário
-sudo adduser adriano
+sudo adduser henrique
 
 # Adicionar esse usuário ao grupo sudo (Ubuntu/Debian)
-sudo usermod -aG sudo adriano
+sudo usermod -aG sudo henrique
 
 # Confirmar que o usuário está no grupo
-groups adriano
+groups henrique
 ```
 
-Depois disso, o usuário `adriano` pode rodar comandos administrativos prefixando com `sudo`:
+Depois disso, o usuário `henrique` pode rodar comandos administrativos prefixando com `sudo`:
 
 ```bash
 sudo apt update
 sudo systemctl restart nginx
 ```
 
-Para **desabilitar o login root via SSH**, edite `/etc/ssh/sshd_config`:
+**Testando o `PermitRootLogin`**
 
+Por padrão, o acesso SSH via root já **não é permitido**. Antes de mudar qualquer coisa, teste isso na prática:
+
+```bash
+ssh root@localhost
+```
+
+Esse acesso deve ser recusado. Agora vamos habilitar temporariamente, só para comprovar o comportamento, e depois desfazer.
+
+1. Edite o arquivo de configuração:
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+2. Localize a linha `#PermitRootLogin`, remova o comentário e altere para `yes`:
+```
+PermitRootLogin yes
+```
+
+3. Reinicie o serviço e teste novamente:
+```bash
+sudo systemctl restart ssh.service
+ssh root@localhost
+```
+Agora o acesso deve ser aceito (supondo que a senha do root esteja definida).
+
+4. Volte a configuração para o padrão seguro, alterando de novo para `no`:
 ```
 PermitRootLogin no
 ```
 
-E reinicie o serviço:
-
+5. Reinicie o serviço mais uma vez para aplicar:
 ```bash
-sudo systemctl restart ssh
+sudo systemctl restart ssh.service
 ```
 
 > A partir desse ponto, qualquer acesso remoto precisa ser feito por um usuário nomeado com sudo — o que também facilita auditoria, já que cada ação fica associada a uma conta específica, e não a um "root" genérico e compartilhado.
@@ -359,18 +345,16 @@ nc -zv localhost 80
 # Ver conexões e portas em escuta na própria máquina
 ss -tulpn
 
+# Alternativa mais antiga (mas ainda muito usada) ao ss
+netstat -natp
+
 # Testar uma requisição HTTP diretamente do terminal
 curl -I http://localhost
 
 # Rastrear o caminho até um host (quando disponível no Linux/WSL2)
+sudo apt install traceroute
 traceroute google.com
 ```
-
-> **No Windows** (PowerShell ou CMD, fora do WSL2), o comando equivalente é o `tracert`:
-> ```powershell
-> tracert google.com
-> ```
-> Ambos mostram os "saltos" (roteadores) pelos quais os pacotes passam até chegar ao destino — útil para identificar em qual ponto da rede uma conexão está lenta ou falhando. A diferença é só o nome do comando e o sistema operacional onde ele roda: `traceroute` no Linux/WSL2, `tracert` no Windows.
 
 ### Exercícios
 
@@ -399,13 +383,16 @@ As permissões também podem ser representadas em formato octal:
 
 Assim, `rwx` = 4+2+1 = **7**, `r-x` = 4+1 = **5**, `r--` = 4.
 
-Além das permissões básicas, o Linux suporta **ACLs (Access Control Lists)** — permissões mais granulares, permitindo dar acesso a usuários ou grupos específicos além do dono e grupo padrão.
+Além das permissões básicas, o comando **`chown`** permite alterar o dono e/ou o grupo de um arquivo — essencial para organizar o acesso quando diferentes usuários ou grupos precisam interagir com os mesmos arquivos.
 
 ### Comandos essenciais
 
 ```bash
 # Ver permissões detalhadas
 ls -la
+
+# Criar um arquivo de teste
+touch arquivo.sh
 
 # Alterar dono e grupo
 sudo chown adriano:devs arquivo.sh
@@ -422,16 +409,20 @@ sudo useradd -m aluno1
 sudo groupadd devs
 sudo usermod -aG devs aluno1
 
-# ACLs — dar permissão extra a um usuário específico
-sudo apt install acl
-setfacl -m u:aluno1:rwx pasta_compartilhada/
-getfacl pasta_compartilhada/
+# Ver todos os grupos existentes no sistema e seus membros
+sudo cat /etc/group
+
+# Trocar apenas o dono de um arquivo, mantendo o grupo
+sudo chown aluno1 arquivo.sh
+
+# Trocar apenas o grupo de um arquivo
+sudo chown :devs arquivo.sh
 ```
 
 ### Exercícios
 
 1. Crie uma pasta `/home/compartilhada`, com um grupo `devs`, e configure permissões para que apenas o grupo tenha acesso de escrita.
-2. Crie dois usuários de teste e use ACL para dar a um deles acesso de leitura a um arquivo que originalmente só o dono pode ler.
+2. Crie dois usuários de teste e use `chown` para transferir a posse de um arquivo de um usuário para o outro.
 3. Explique (por escrito, num arquivo `respostas.md`) a diferença entre `chmod 700` e `chmod 750` em um script.
 4. Desafio: usando `find`, liste todos os arquivos do seu `$HOME` com permissão de escrita para "outros" (`o+w`) — um risco comum de segurança.
 
@@ -746,7 +737,7 @@ Acesse `https://localhost` (o navegador vai alertar que o certificado não é co
 - [ ] Acesso SSH configurado (com autenticação por chave) e testado localmente
 - [ ] Configuração básica de rede verificada (IP, hostname, DNS, rotas)
 - [ ] Teste de conectividade realizado (ping, nc, ss, curl)
-- [ ] Permissões, usuários, grupos e ACLs praticados
+- [ ] Permissões, usuários, grupos e `chown` praticados
 - [ ] LVM simulado com loop devices e volumes redimensionados
 - [ ] Scripts de automação criados e agendados via cron
 - [ ] Nginx instalado e servindo uma página própria
