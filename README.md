@@ -627,6 +627,201 @@ chmod +x script.sh
 ./script.sh
 ```
 
+#### Argumentos de linha de comando
+
+Todo script pode receber informações de fora, passadas na hora de chamá-lo:
+
+```bash
+#!/bin/bash
+echo "Nome do script: $0"
+echo "Primeiro argumento: $1"
+echo "Segundo argumento: $2"
+echo "Todos os argumentos: $@"
+echo "Quantidade de argumentos: $#"
+```
+
+Rodando `./script.sh servidor1 producao`, o resultado seria:
+```
+Nome do script: ./script.sh
+Primeiro argumento: servidor1
+Segundo argumento: producao
+Todos os argumentos: servidor1 producao
+Quantidade de argumentos: 2
+```
+
+- `$0` — o nome do próprio script.
+- `$1`, `$2`, ... — os argumentos individuais, na ordem em que foram passados.
+- `$@` — todos os argumentos, como uma lista.
+- `$#` — quantos argumentos foram passados (útil para validar se o script recebeu o que precisava antes de continuar).
+
+#### Variáveis de ambiente
+
+Uma variável comum (`VARIAVEL="valor"`) só existe dentro do shell ou script onde foi criada. Já uma **variável de ambiente** funciona como uma "variável global": fica disponível para todos os subprocessos daquele shell, incluindo outros programas e scripts que ele venha a chamar.
+
+Alguns exemplos de variáveis de ambiente já existentes no sistema:
+
+| Variável | O que é |
+|---|---|
+| `PATH` | Lista de diretórios onde o shell procura por programas executáveis |
+| `USERNAME` | Nome do usuário logado |
+| `TERM` | Tipo de terminal ou janela de terminal em uso |
+| `HOME` | Diretório home do usuário atual |
+| `UID` | UID (identificador numérico) do usuário atual |
+| `RANDOM` | Gera um número aleatório a cada vez que é lida |
+| `LANG` | Idioma configurado, especificado como *locale* |
+
+```bash
+# Ver o valor de uma variável de ambiente específica
+echo $HOME
+echo $PATH
+
+# Listar todas as variáveis de ambiente do terminal atual
+env
+printenv
+
+# Ver só uma variável específica com printenv
+printenv LANG
+```
+
+**Criando uma variável de ambiente própria:** por padrão, toda variável que você cria (`MINHA_VAR="valor"`) é local ao shell atual — se você chamar um script ou outro programa a partir dali, ele não vai enxergar essa variável. Para torná-la uma variável de ambiente (visível também pelos subprocessos), use o comando `export`:
+
+```bash
+# Cria uma variável local
+AMBIENTE="producao"
+
+# Torna essa variável visível também para subprocessos (scripts, programas chamados a partir daqui)
+export AMBIENTE
+
+# Ou nas duas linhas de uma vez
+export AMBIENTE="producao"
+```
+
+Isso é bastante usado, por exemplo, para configurar variáveis que um script precisa ler (`export DB_HOST="localhost"`) sem precisar passá-las como argumento toda vez.
+
+#### Operadores de comparação
+
+Dentro de um `if`, o tipo de comparação muda dependendo se você está comparando números ou textos:
+
+```bash
+# Comparação numérica
+if [ "$IDADE" -eq 18 ]; then echo "tem exatamente 18"; fi
+if [ "$IDADE" -gt 18 ]; then echo "maior que 18"; fi
+if [ "$IDADE" -lt 18 ]; then echo "menor que 18"; fi
+
+# Comparação de texto (string)
+if [ "$AMBIENTE" = "producao" ]; then echo "é produção"; fi
+if [ "$AMBIENTE" != "producao" ]; then echo "não é produção"; fi
+```
+
+| Numérico | Significado | String | Significado |
+|---|---|---|---|
+| `-eq` | igual | `=` | igual |
+| `-ne` | diferente | `!=` | diferente |
+| `-gt` | maior que | | |
+| `-lt` | menor que | | |
+| `-ge` | maior ou igual | | |
+| `-le` | menor ou igual | | |
+
+**`[ ]` vs `[[ ]]`**: `[ ]` é a sintaxe mais antiga e portátil (funciona em qualquer shell POSIX), mas é mais rígida — exige aspas cuidadosas em torno de variáveis para não quebrar com espaços ou strings vazias. `[[ ]]` é uma extensão do Bash, mais segura e flexível: permite operadores como `&&`/`||` diretamente dentro dos colchetes, comparação de padrões (`[[ $ARQUIVO == *.log ]]`) e é mais tolerante a variáveis vazias ou com espaços. Na prática, em scripts que só vão rodar em Bash (a maioria dos casos em servidores Linux modernos), prefira `[[ ]]`.
+
+#### Códigos de saída (exit codes)
+
+Todo comando ou script, ao terminar, retorna um **código de saída**: `0` significa sucesso, qualquer valor de `1` a `255` significa algum tipo de erro (o número específico geralmente indica o motivo).
+
+```bash
+# Ver o código de saída do último comando executado
+ls /pasta/que/nao/existe
+echo $?    # deve mostrar um valor diferente de 0
+
+# Forçar um código de saída específico no fim de um script
+if [ ! -d "/mnt/dados" ]; then
+    echo "Erro: diretório não encontrado" >&2
+    exit 1
+fi
+
+echo "Tudo certo"
+exit 0
+```
+
+Isso importa porque outros programas — inclusive o próprio cron, ou uma pipeline de CI/CD que veremos na Unidade 2 — decidem o que fazer a seguir com base nesse código. Um script que sempre retorna `0`, mesmo quando algo deu errado internamente, engana quem depende dele: um alerta que deveria disparar não dispara, uma pipeline que deveria parar continua. Todo script bem escrito deve refletir corretamente, no seu código de saída, se a tarefa foi concluída com sucesso ou não.
+
+#### Manipulação de texto
+
+Ferramentas clássicas de linha de comando para filtrar e transformar texto — extremamente úteis para analisar logs e saídas de outros comandos:
+
+```bash
+# grep — buscar linhas que casam com um padrão
+grep "error" /var/log/syslog
+grep -i "error" /var/log/syslog        # ignora maiúsculas/minúsculas
+grep -c "error" /var/log/syslog        # conta quantas ocorrências
+
+# grep -E — expressões regulares estendidas
+grep -E "error|fail|critical" /var/log/syslog
+grep -E "^[0-9]{3}" acessos.log        # linhas que começam com 3 dígitos
+
+# sed — substituir texto
+sed 's/error/ERRO/g' arquivo.log       # troca todas as ocorrências
+sed -i 's/producao/homologacao/g' config.txt   # edita o arquivo diretamente (-i)
+
+# awk — processar texto por colunas
+awk '{print $1}' acessos.log           # imprime só a primeira coluna
+awk -F, '{print $2}' dados.csv         # usa vírgula como separador de coluna
+
+# cut — extrair pedaços de cada linha
+cut -d: -f1 /etc/passwd                # extrai o 1º campo, separado por ":"
+
+# sort e uniq — ordenar e remover duplicatas
+sort nomes.txt
+sort nomes.txt | uniq                  # remove linhas duplicadas adjacentes
+sort nomes.txt | uniq -c               # conta quantas vezes cada linha aparece
+```
+
+Essas ferramentas são frequentemente combinadas em **pipeline** (usando `|`) para compor análises mais complexas — por exemplo, listar os 5 IPs que mais acessaram um servidor:
+
+```bash
+awk '{print $1}' acesso.log | sort | uniq -c | sort -rn | head -5
+```
+
+#### Here-documents
+
+Um **here-document** (`<<EOF ... EOF`) permite gerar um bloco de texto (ou um arquivo inteiro) diretamente de dentro de um script, sem precisar de vários `echo` separados — muito usado para gerar arquivos de configuração:
+
+```bash
+#!/bin/bash
+cat <<EOF > /etc/nginx/sites-available/meusite
+server {
+    listen 80;
+    server_name $DOMINIO;
+    root /var/www/meusite;
+}
+EOF
+
+echo "Configuração criada para $DOMINIO"
+```
+
+Repare que variáveis como `$DOMINIO` são expandidas normalmente dentro do bloco — o que torna possível gerar configurações dinâmicas a partir de um template.
+
+#### Execução condicional em pipeline
+
+Além do `if`, é comum encadear comandos diretamente na linha, decidindo o que roda a seguir com base no sucesso ou falha do comando anterior:
+
+```bash
+# && — só executa o próximo comando se o anterior teve sucesso (exit code 0)
+mkdir /mnt/backup && echo "Pasta criada com sucesso"
+
+# || — só executa o próximo comando se o anterior FALHOU
+ping -c 1 servidor.com || echo "Servidor não respondeu"
+
+# ; — executa os comandos em sequência, independente do resultado do anterior
+cd /tmp; ls; pwd
+```
+
+Isso é uma forma compacta de tratamento de erro, muito usada em scripts curtos e em pipelines de CI/CD:
+
+```bash
+sudo systemctl restart nginx && echo "Nginx reiniciado" || echo "Falha ao reiniciar o Nginx"
+```
+
 Exemplo — script de backup simples (`backup.sh`):
 
 ```bash
@@ -653,10 +848,11 @@ Adicione a linha (executa todo dia às 2h da manhã):
 
 ### Exercícios
 
-1. Escreva um script que verifique o uso de disco (`df -h`) e envie um alerta (`echo` em um arquivo de log) se o uso passar de 80%.
+1. Escreva um script que verifique o uso de disco (`df -h`) e envie um alerta (`echo` em um arquivo de log) se o uso passar de 80%. Faça o script terminar com `exit 1` se disparou o alerta, e `exit 0` caso contrário.
 2. Agende esse script para rodar a cada 15 minutos usando cron.
-3. Escreva um script que receba um nome de pasta como argumento (`$1`) e conte quantos arquivos existem dentro dela.
-4. Desafio: crie um script que rotacione logs — renomeie `app.log` para `app.log.antigo` e crie um `app.log` vazio, apenas se o arquivo atual passar de 1MB.
+3. Escreva um script que receba um nome de pasta como argumento (`$1`) e conte quantos arquivos existem dentro dela. Se nenhum argumento for passado (`$#` igual a 0), o script deve exibir uma mensagem de uso e sair com `exit 1`.
+4. Use `grep -E`, `awk` e `sort`/`uniq` para encontrar, num arquivo de log, quais são as 3 mensagens de erro mais frequentes.
+5. Desafio: crie um script que rotacione logs — renomeie `app.log` para `app.log.antigo` e crie um `app.log` vazio, apenas se o arquivo atual passar de 1MB. Use um here-document para registrar, num arquivo de relatório, a data e o motivo da rotação.
 
 ---
 
