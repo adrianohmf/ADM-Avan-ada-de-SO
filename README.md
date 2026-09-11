@@ -719,7 +719,7 @@ Alguns exemplos de variáveis de ambiente já existentes no sistema:
 | Variável | O que é |
 |---|---|
 | `PATH` | Lista de diretórios onde o shell procura por programas executáveis |
-| `USERNAME` | Nome do usuário logado |
+| `USER` | Nome do usuário logado |
 | `TERM` | Tipo de terminal ou janela de terminal em uso |
 | `HOME` | Diretório home do usuário atual |
 | `UID` | UID (identificador numérico) do usuário atual |
