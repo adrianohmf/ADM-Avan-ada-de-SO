@@ -17,8 +17,7 @@
 - [Semana 3 — Permissões e sistema de arquivos](#semana-3--permissões-e-sistema-de-arquivos)
 - [Semana 4 — Armazenamento e monitoramento básico](#semana-4--armazenamento-e-monitoramento-básico)
 - [Semana 5 — Shell scripting para automação](#semana-5--shell-scripting-para-automação)
-- [Semana 6 — Introdução a servidores web](#semana-6--introdução-a-servidores-web)
-- [Semana 7 — Proxy reverso](#semana-7--proxy-reverso)
+- [Semana 6 e 7 — Servidores web e proxy reverso](#semana-6-e-7--servidores-web-e-proxy-reverso)
 - [Semana 8 — TLS/SSL](#semana-8--tlsssl)
 - [Checklist geral (Semanas 2 a 8)](#checklist-geral-semanas-2-a-8)
 
@@ -438,7 +437,7 @@ traceroute google.com
 
 1. Habilite o servidor SSH no seu WSL2 e conecte-se a ele localmente usando `ssh usuario@localhost`.
 2. Gere um par de chaves SSH e configure o acesso sem senha (`ssh-copy-id`) para o seu próprio usuário local.
-3. Use `ss -tulpn` para identificar em quais portas o Nginx (Semana 6) e o SSH estão escutando.
+3. Use `ss -tulpn` para identificar em quais portas o Nginx (Semana 6 e 7) e o SSH estão escutando.
 4. Desafio: usando `nc -zv`, escreva um pequeno script que teste a conectividade de 3 portas diferentes (22, 80, 443) e informe quais estão abertas.
 
 ---
@@ -617,6 +616,10 @@ fi
 for item in lista; do
     comando "$item"
 done
+
+for item in arquivo1.txt arquivo2.txt arquivo3.txt; do
+    cat "$item"
+done
 ```
 
 #### Criando variáveis de usuário
@@ -719,7 +722,7 @@ Alguns exemplos de variáveis de ambiente já existentes no sistema:
 | Variável | O que é |
 |---|---|
 | `PATH` | Lista de diretórios onde o shell procura por programas executáveis |
-| `USER` | Nome do usuário logado |
+| `USERNAME` | Nome do usuário logado |
 | `TERM` | Tipo de terminal ou janela de terminal em uso |
 | `HOME` | Diretório home do usuário atual |
 | `UID` | UID (identificador numérico) do usuário atual |
@@ -1131,7 +1134,7 @@ fi
 
 ---
 
-## Semana 6 — Introdução a servidores web
+## Semana 6 e 7 — Servidores web e proxy reverso
 
 ### Teoria
 
@@ -1139,9 +1142,28 @@ O protocolo **HTTP** define como clientes (navegadores) e servidores web trocam 
 
 ![Requisição e resposta HTTP](images/http.png)
 
-O **Nginx** e o **Apache** são os servidores web mais usados no mercado. O Nginx se destaca por lidar melhor com muitas conexões simultâneas e é frequentemente usado também como proxy reverso (Semana 7).
+O **Nginx** e o **Apache** são os servidores web mais usados no mercado. O Nginx se destaca por lidar melhor com muitas conexões simultâneas e é frequentemente usado também como **proxy reverso** — um papel adicional que ele desempenha muito bem, e que vamos explorar na segunda metade desta semana.
 
-### Comandos essenciais
+#### Apache x Nginx: a diferença na arquitetura
+
+A principal diferença entre os dois está em como cada um lida internamente com múltiplas requisições chegando ao mesmo tempo:
+
+![Apache lança um processo por requisição, Nginx usa workers](images/apache_vs_nginx.png)
+
+- **Apache (modelo tradicional)**: no modo mais comum (MPM `prefork`), o Apache lança um **novo processo (ou thread) dedicado para cada requisição**. Isso é simples de entender e configurar, mas cada processo consome memória própria — com muitas conexões simultâneas, o servidor pode consumir bastante RAM e ficar mais lento para abrir/gerenciar tantos processos.
+- **Nginx (orientado a eventos)**: em vez de um processo por requisição, o Nginx **trabalha com um número fixo de *workers*** (processos), e cada worker consegue atender **várias requisições ao mesmo tempo**, de forma assíncrona e não bloqueante — sem precisar criar um processo novo a cada conexão. É por isso que o Nginx costuma lidar melhor com um volume grande de conexões simultâneas, usando bem menos memória para isso.
+
+Essa diferença de arquitetura explica boa parte das decisões práticas do mercado: o Nginx é frequentemente colocado na "porta de entrada" (servindo arquivos estáticos, fazendo proxy reverso, balanceamento de carga), enquanto o Apache continua muito usado onde sua flexibilidade de módulos (como o `.htaccess`) é mais valorizada — por exemplo, em hospedagens compartilhadas.
+
+> Vídeo recomendado sobre o assunto: [Apache x Nginx](https://www.youtube.com/watch?v=gd_cUmwzgEM)
+
+Um **proxy reverso** fica entre o cliente e um ou mais servidores de aplicação, recebendo as requisições e encaminhando-as para o backend correto — sem que o cliente saiba diretamente com qual servidor está falando.
+
+![Proxy reverso com Nginx](images/reverse_proxy.png)
+
+Isso é útil para: distribuir carga entre múltiplas instâncias, ocultar a estrutura interna da infraestrutura, centralizar configurações de segurança (como o TLS, visto na próxima semana), aplicar cache e compressão antes de a requisição chegar à aplicação, e padronizar logs de acesso num único ponto.
+
+### Comandos essenciais — instalando e servindo uma página
 
 ```bash
 # Instalar o Nginx no WSL2
@@ -1173,26 +1195,7 @@ sudo nano /var/www/html/index.html
 
 Acesse pelo navegador do Windows: `http://localhost`
 
-### Exercícios
-
-1. Instale o Nginx e publique uma página HTML estática simples com seu nome e a disciplina.
-2. Altere a porta padrão do Nginx (de 80 para 8080) editando `/etc/nginx/sites-available/default` e reinicie o serviço.
-3. Compare, em texto, uma vantagem e uma desvantagem do Nginx frente ao Apache.
-4. Desafio: instale também o Apache (`apache2`) em outra porta e mantenha os dois rodando simultaneamente sem conflito.
-
----
-
-## Semana 7 — Proxy reverso
-
-### Teoria
-
-Um **proxy reverso** fica entre o cliente e um ou mais servidores de aplicação, recebendo as requisições e encaminhando-as para o backend correto — sem que o cliente saiba diretamente com qual servidor está falando.
-
-![Proxy reverso com Nginx](images/reverse_proxy.png)
-
-Isso é útil para: distribuir carga entre múltiplas instâncias, ocultar a estrutura interna da infraestrutura, e centralizar configurações de segurança (como o TLS, visto na próxima semana).
-
-### Comandos e configuração
+### Comandos e configuração — proxy reverso
 
 Suba uma aplicação simples para servir de backend (ex.: um servidor HTTP em Python):
 
@@ -1223,12 +1226,119 @@ sudo nginx -t          # testa a sintaxe antes de aplicar
 sudo systemctl reload nginx
 ```
 
+### Balanceamento de carga com `upstream`
+
+Quando existe mais de uma instância da mesma aplicação rodando (ex.: para suportar mais tráfego ou permitir atualizações sem downtime), o Nginx pode distribuir as requisições entre elas usando a diretiva `upstream`:
+
+```nginx
+upstream meu_backend {
+    server 127.0.0.1:3000;
+    server 127.0.0.1:3001;
+    server 127.0.0.1:3002;
+}
+
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://meu_backend;
+    }
+}
+```
+
+Por padrão, o Nginx distribui as requisições em **round robin** (uma para cada servidor, em sequência). Outras estratégias disponíveis:
+
+```nginx
+upstream meu_backend {
+    least_conn;              # envia para o servidor com menos conexões ativas no momento
+    server 127.0.0.1:3000;
+    server 127.0.0.1:3001;
+}
+
+upstream meu_backend_sticky {
+    ip_hash;                 # sempre manda o mesmo cliente para o mesmo servidor (útil para sessões)
+    server 127.0.0.1:3000;
+    server 127.0.0.1:3001;
+}
+```
+
+### Health checks e failover
+
+O Nginx também pode marcar um servidor do `upstream` como indisponível automaticamente, e parar de enviar tráfego para ele até que volte a responder:
+
+```nginx
+upstream meu_backend {
+    server 127.0.0.1:3000 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:3001 max_fails=3 fail_timeout=30s;
+    server 127.0.0.1:3002 backup;   # só recebe tráfego se todos os outros falharem
+}
+```
+`max_fails=3 fail_timeout=30s` significa: depois de 3 falhas seguidas, aquele servidor é considerado fora do ar por 30 segundos, período em que o Nginx não tenta mais enviar requisições para ele.
+
+### Cache e compressão
+
+Duas otimizações comuns aplicadas na camada de proxy reverso, antes mesmo de a requisição chegar à aplicação:
+
+```nginx
+# Compressão gzip das respostas — reduz o tamanho transferido pela rede
+gzip on;
+gzip_types text/plain text/css application/json application/javascript;
+
+# Cache de respostas do backend, evitando repetir processamento
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=meu_cache:10m max_size=100m;
+
+server {
+    location / {
+        proxy_pass http://meu_backend;
+        proxy_cache meu_cache;
+        proxy_cache_valid 200 10m;   # respostas com status 200 ficam em cache por 10 minutos
+    }
+}
+```
+
+### Cabeçalhos de segurança e WebSockets
+
+Alguns cabeçalhos de resposta ajudam a proteger a aplicação contra ataques comuns, e podem ser adicionados diretamente no Nginx, sem precisar alterar o código da aplicação:
+
+```nginx
+add_header X-Frame-Options "SAMEORIGIN";
+add_header X-Content-Type-Options "nosniff";
+add_header X-XSS-Protection "1; mode=block";
+```
+
+Se a aplicação usa **WebSockets** (conexões persistentes, comuns em chats e notificações em tempo real), o proxy reverso precisa de cabeçalhos extras para não derrubar a conexão:
+
+```nginx
+location /ws/ {
+    proxy_pass http://meu_backend;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+### Logs de acesso e erro
+
+Todo acesso ao Nginx fica registrado por padrão, o que é essencial para investigar problemas e entender o tráfego:
+
+```bash
+# Logs de acesso (cada requisição recebida)
+sudo tail -f /var/log/nginx/access.log
+
+# Logs de erro (falhas de configuração, proxy indisponível, etc.)
+sudo tail -f /var/log/nginx/error.log
+```
+
 ### Exercícios
 
-1. Suba duas aplicações simples em portas diferentes (3000 e 3001) e configure o Nginx para redirecionar `/app1` para uma e `/app2` para outra.
-2. Pesquise e configure balanceamento de carga simples entre duas instâncias da mesma aplicação usando a diretiva `upstream` do Nginx.
-3. Explique, em texto, por que normalmente não se expõe a aplicação diretamente à internet, preferindo colocá-la atrás de um proxy reverso.
-4. Desafio: adicione um cabeçalho de resposta customizado (`add_header`) no Nginx e confirme que ele aparece na resposta usando `curl -I http://localhost`.
+1. Instale o Nginx e publique uma página HTML estática simples com seu nome e a disciplina.
+2. Altere a porta padrão do Nginx (de 80 para 8080) editando `/etc/nginx/sites-available/default` e reinicie o serviço.
+3. Suba duas aplicações simples em portas diferentes (3000 e 3001) e configure o Nginx para redirecionar `/app1` para uma e `/app2` para outra.
+4. Configure um `upstream` com as duas aplicações do exercício anterior e teste o balanceamento round robin, atualizando a página várias vezes.
+5. Configure `max_fails` e `fail_timeout` no `upstream`, derrube uma das aplicações de propósito, e observe pelo `access.log`/`error.log` o Nginx deixando de enviar tráfego para ela.
+6. Adicione um cabeçalho de resposta customizado (`add_header`) no Nginx e confirme que ele aparece na resposta usando `curl -I http://localhost`.
+7. Desafio: instale também o Apache (`apache2`) em outra porta e mantenha os dois rodando simultaneamente sem conflito; compare, em texto, uma vantagem e uma desvantagem do Nginx frente ao Apache.
 
 ---
 
