@@ -17,7 +17,8 @@
 - [Semana 3 — Permissões e sistema de arquivos](#semana-3--permissões-e-sistema-de-arquivos)
 - [Semana 4 — Armazenamento e monitoramento básico](#semana-4--armazenamento-e-monitoramento-básico)
 - [Semana 5 — Shell scripting para automação](#semana-5--shell-scripting-para-automação)
-- [Semana 6 e 7 — Servidores web e proxy reverso](#semana-6-e-7--servidores-web-e-proxy-reverso)
+- [Semana 6 — Introdução a servidores web](#semana-6--introdução-a-servidores-web)
+- [Semana 7 — Proxy reverso](#semana-7--proxy-reverso)
 - [Semana 8 — TLS/SSL](#semana-8--tlsssl)
 - [Checklist geral (Semanas 2 a 8)](#checklist-geral-semanas-2-a-8)
 
@@ -437,7 +438,7 @@ traceroute google.com
 
 1. Habilite o servidor SSH no seu WSL2 e conecte-se a ele localmente usando `ssh usuario@localhost`.
 2. Gere um par de chaves SSH e configure o acesso sem senha (`ssh-copy-id`) para o seu próprio usuário local.
-3. Use `ss -tulpn` para identificar em quais portas o Nginx (Semana 6 e 7) e o SSH estão escutando.
+3. Use `ss -tulpn` para identificar em quais portas o Nginx (Semana 6) e o SSH estão escutando.
 4. Desafio: usando `nc -zv`, escreva um pequeno script que teste a conectividade de 3 portas diferentes (22, 80, 443) e informe quais estão abertas.
 
 ---
@@ -1134,7 +1135,7 @@ fi
 
 ---
 
-## Semana 6 e 7 — Servidores web e proxy reverso
+## Semana 6 — Introdução a servidores web
 
 ### Teoria
 
@@ -1142,7 +1143,7 @@ O protocolo **HTTP** define como clientes (navegadores) e servidores web trocam 
 
 ![Requisição e resposta HTTP](images/http.png)
 
-O **Nginx** e o **Apache** são os servidores web mais usados no mercado. O Nginx se destaca por lidar melhor com muitas conexões simultâneas e é frequentemente usado também como **proxy reverso** — um papel adicional que ele desempenha muito bem, e que vamos explorar na segunda metade desta semana.
+O **Nginx** e o **Apache** são os servidores web mais usados no mercado. O Nginx se destaca por lidar melhor com muitas conexões simultâneas e é frequentemente usado também como **proxy reverso** — um papel adicional que ele desempenha muito bem, e que vamos explorar na próxima semana.
 
 #### Apache x Nginx: a diferença na arquitetura
 
@@ -1156,6 +1157,157 @@ A principal diferença entre os dois está em como cada um lida internamente com
 Essa diferença de arquitetura explica boa parte das decisões práticas do mercado: o Nginx é frequentemente colocado na "porta de entrada" (servindo arquivos estáticos, fazendo proxy reverso, balanceamento de carga), enquanto o Apache continua muito usado onde sua flexibilidade de módulos (como o `.htaccess`) é mais valorizada — por exemplo, em hospedagens compartilhadas.
 
 > Vídeo recomendado sobre o assunto: [Apache x Nginx](https://www.youtube.com/watch?v=gd_cUmwzgEM)
+
+### Comandos essenciais
+
+```bash
+# Instalar o Nginx no WSL2
+sudo apt update
+sudo apt install nginx
+
+# Como o WSL2 não usa systemd habilitado por padrão em algumas versões, inicie manualmente se necessário:
+sudo service nginx start
+# ou, com systemd habilitado (ver seção inicial deste material):
+sudo systemctl start nginx
+sudo systemctl enable nginx
+```
+
+Página padrão fica em `/var/www/html/index.nginx-debian.html`. Para servir sua própria página:
+
+```bash
+sudo nano /var/www/html/index.html
+```
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 3rem;
+        }
+        p {
+            color: #666;
+            margin-top: 1rem;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hello, World!</h1>
+        <p>Welcome to your first web page</p>
+    </div>
+</body>
+</html>
+```
+
+Acesse pelo navegador do Windows: `http://localhost`
+
+#### Entendendo o arquivo de configuração default
+
+Quando usamos o comando
+
+```bash
+nginx -h
+```
+
+para verificar os detalhes do Nginx que acabamos de instalar na nossa máquina, vamos observar o local onde ele foi instalado e onde está o arquivo de configuração default que nosso servidorzinho está usando.
+
+> No **WSL2/Ubuntu** (o ambiente deste material), esse arquivo fica em `/etc/nginx/nginx.conf`, diferente do caminho que aparece em instalações via Homebrew no macOS (`/opt/homebrew/etc/nginx/nginx.conf`) — o conteúdo e a lógica do arquivo, porém, são praticamente os mesmos.
+
+```bash
+/opt/homebrew/etc/nginx/nginx.conf
+```
+
+Veremos que ele se parece com o seguinte:
+
+```nginx
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+
+    keepalive_timeout  65;
+
+    server {
+        listen       8080;
+        server_name  localhost;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+
+    include servers/*;
+}
+```
+
+**Entendendo as configurações**
+
+- **`worker_processes`** — Define o número de processos de trabalho (workers) que o Nginx vai iniciar. Geralmente é definido igual ao número de núcleos de CPU disponíveis, mas aqui está fixado em 1.
+- **`worker_connections`** — Define configurações relacionadas aos eventos. O `worker_connections` determina o número máximo de conexões simultâneas que cada processo worker pode aceitar.
+- **`http {`** — Início do bloco de configuração do módulo HTTP, que gerencia requisições web.
+- **`include mime.types;`** — Inclui o arquivo `mime.types`, que associa extensões de arquivos a tipos MIME, permitindo que o Nginx envie o `Content-Type` correto nas respostas.
+- **`default_type application/octet-stream;`** — Define o tipo MIME padrão para arquivos cuja extensão não foi reconhecida. `application/octet-stream` é usado para dados binários genéricos.
+- **`sendfile on;`** — Ativa o uso do `sendfile()`, uma chamada de sistema eficiente para envio de arquivos, melhorando a performance.
+- **`keepalive_timeout 65;`** — Define o tempo (em segundos) que a conexão ficará aberta aguardando novas requisições antes de ser encerrada.
+- **`server {`** — Início do bloco que define um servidor virtual (host).
+- **`listen 8080;`** — O servidor irá escutar a porta 8080 por conexões HTTP.
+- **`server_name localhost;`** — Define o nome do servidor (hostname) para correspondência com o `Host` da requisição. Neste caso, aceita apenas `localhost`.
+- **`location /`** — Define o comportamento para as requisições que chegarem na raiz do `server_name` (`/`).
+  - **`root html;`** — Os arquivos serão servidos a partir da pasta `html`.
+  - **`index index.html index.htm;`** — Caso não seja especificado um arquivo, tentará carregar `index.html` ou `index.htm`.
+- **`error_page 500 502 503 504 /50x.html;`** — Define uma página de erro customizada para os códigos de erro 500, 502, 503 e 504. Redireciona para o caminho `/50x.html`.
+- **`location = /50x.html {`** — Especifica onde está localizado o arquivo `/50x.html` no sistema de arquivos, que será servido a partir da pasta `html`.
+- **`include servers/*;`** — Inclui todos os arquivos de configuração dentro do diretório `servers/`. Útil para organizar múltiplos blocos `server` separados.
+
+### Exercícios
+
+1. Instale o Nginx e publique uma página HTML estática simples com seu nome e a disciplina.
+2. Altere a porta padrão do Nginx (de 80 para 8080) editando `/etc/nginx/sites-available/default` e reinicie o serviço.
+3. Rode `nginx -h` e localize, no seu WSL2, onde ficam o binário do Nginx e o arquivo `nginx.conf`.
+4. Desafio: instale também o Apache (`apache2`) em outra porta e mantenha os dois rodando simultaneamente sem conflito; compare, em texto, uma vantagem e uma desvantagem do Nginx frente ao Apache.
+
+---
+
+## Semana 7 — Proxy reverso
+
+### Teoria
 
 Um **proxy reverso** fica entre o cliente e um ou mais servidores de aplicação, recebendo as requisições e encaminhando-as para o backend correto — sem que o cliente saiba diretamente com qual servidor está falando. Isso é diferente de um **proxy comum (de encaminhamento)**, que fica do lado do cliente: várias máquinas cliente passam por ele para acessar a internet, e é o cliente quem fica "escondido" do servidor de destino.
 
@@ -1189,38 +1341,6 @@ No nosso ambiente de estudo, o Nginx desempenha exatamente esse papel de proxy r
 
 Isso é útil para: distribuir carga entre múltiplas instâncias, ocultar a estrutura interna da infraestrutura, centralizar configurações de segurança (como o TLS, visto na próxima semana), aplicar cache e compressão antes de a requisição chegar à aplicação, e padronizar logs de acesso num único ponto.
 
-### Comandos essenciais — instalando e servindo uma página
-
-```bash
-# Instalar o Nginx no WSL2
-sudo apt update
-sudo apt install nginx
-
-# Como o WSL2 não usa systemd habilitado por padrão em algumas versões, inicie manualmente se necessário:
-sudo service nginx start
-# ou, com systemd habilitado (ver seção inicial deste material):
-sudo systemctl start nginx
-sudo systemctl enable nginx
-```
-
-Página padrão fica em `/var/www/html/index.nginx-debian.html`. Para servir sua própria página:
-
-```bash
-sudo nano /var/www/html/index.html
-```
-
-```html
-<!DOCTYPE html>
-<html>
-<head><title>Minha primeira página</title></head>
-<body>
-  <h1>Funcionando no WSL2!</h1>
-</body>
-</html>
-```
-
-Acesse pelo navegador do Windows: `http://localhost`
-
 ### Comandos e configuração — proxy reverso
 
 Suba uma aplicação simples para servir de backend (ex.: um servidor HTTP em Python):
@@ -1252,9 +1372,61 @@ sudo nginx -t          # testa a sintaxe antes de aplicar
 sudo systemctl reload nginx
 ```
 
+**`systemctl reload` x `nginx -s reload`**: até aqui usamos `systemctl reload nginx`, que pede ao *systemd* para recarregar o serviço. Existe também uma forma de pedir isso **diretamente ao próprio binário do Nginx**, sem passar pelo systemd:
+
+```bash
+sudo nginx -s reload
+```
+
+Os dois fazem, na prática, a mesma coisa: recarregam os arquivos de configuração **sem derrubar as conexões já em andamento** (diferente de um `restart`, que reinicia o processo inteiro). A diferença é só a "porta de entrada":
+
+- `systemctl reload nginx` — passa pelo systemd, que sabe controlar o serviço (start/stop/enable) mesmo que o Nginx não esteja rodando corretamente; é a forma recomendada quando o Nginx está rodando como serviço gerenciado pelo systemd (como fizemos até aqui).
+- `nginx -s reload` — fala diretamente com o processo mestre do Nginx (`-s` de *signal*, envia o sinal internamente). Funciona em qualquer instalação, mesmo sem systemd — é o comando mais comum em ambientes onde o Nginx foi instalado "na mão" (ex.: compilado do código-fonte) ou em sistemas como macOS com Homebrew, onde não há systemd.
+
+Outros sinais aceitos por `nginx -s`:
+
+```bash
+sudo nginx -s stop      # para o Nginx imediatamente (sem esperar requisições em andamento)
+sudo nginx -s quit      # para o Nginx graciosamente (espera terminar o que já estava em andamento)
+sudo nginx -s reopen    # reabre os arquivos de log (útil após rotacioná-los)
+```
+
+> No nosso ambiente (WSL2 com systemd habilitado), prefira `systemctl reload/restart nginx` no dia a dia — é a forma mais alinhada com o resto do material (Semana 2). Mas vale saber que `nginx -s` existe e funciona igual, pois é comum encontrá-lo em documentações e tutoriais que não usam systemd.
+
 ### Balanceamento de carga com `upstream`
 
-Quando existe mais de uma instância da mesma aplicação rodando (ex.: para suportar mais tráfego ou permitir atualizações sem downtime), o Nginx pode distribuir as requisições entre elas usando a diretiva `upstream`:
+Quando existe mais de uma instância da mesma aplicação rodando (ex.: para suportar mais tráfego ou permitir atualizações sem downtime), o Nginx pode distribuir as requisições entre elas usando a diretiva `upstream`.
+
+#### Passo a passo: simulando 3 backends com `http.server`
+
+Antes de configurar o Nginx, precisamos de mais de um "servidor de aplicação" rodando para ele balancear. Uma forma simples de simular isso, sem precisar de uma aplicação de verdade, é subir três instâncias do `python3 -m http.server` — cada uma servindo uma página diferente, para deixar visível qual delas respondeu a cada requisição.
+
+1. Crie três pastas, cada uma com sua própria página:
+```bash
+mkdir -p ~/lb-teste/app1 ~/lb-teste/app2 ~/lb-teste/app3
+
+echo "<h1>Respondido pelo Servidor 1 (porta 3000)</h1>" > ~/lb-teste/app1/index.html
+echo "<h1>Respondido pelo Servidor 2 (porta 3001)</h1>" > ~/lb-teste/app2/index.html
+echo "<h1>Respondido pelo Servidor 3 (porta 3002)</h1>" > ~/lb-teste/app3/index.html
+```
+
+2. Suba cada uma numa porta diferente, em segundo plano (`&`), para não precisar de três terminais:
+```bash
+cd ~/lb-teste/app1 && python3 -m http.server 3000 &
+cd ~/lb-teste/app2 && python3 -m http.server 3001 &
+cd ~/lb-teste/app3 && python3 -m http.server 3002 &
+```
+
+3. Confirme que as três estão no ar (cada uma deve responder com um texto diferente):
+```bash
+curl http://localhost:3000
+curl http://localhost:3001
+curl http://localhost:3002
+```
+
+> Para encerrar os três processos depois dos testes: `kill %1 %2 %3` (referindo-se aos jobs colocados em background), ou `pkill -f http.server`.
+
+Com os três backends no ar, configure o `upstream` do Nginx apontando para eles:
 
 ```nginx
 upstream meu_backend {
@@ -1272,6 +1444,14 @@ server {
     }
 }
 ```
+
+Aplique a configuração (`sudo nginx -t` e `sudo systemctl reload nginx`) e teste o balanceamento rodando várias requisições seguidas:
+
+```bash
+for i in {1..6}; do curl http://localhost; echo; done
+```
+
+Como cada porta responde com um texto diferente, fica bem visível o Nginx alternando entre os três servidores em round robin.
 
 Por padrão, o Nginx distribui as requisições em **round robin** (uma para cada servidor, em sequência). Outras estratégias disponíveis:
 
@@ -1364,13 +1544,11 @@ sudo tail -f /var/log/nginx/error.log
 
 ### Exercícios
 
-1. Instale o Nginx e publique uma página HTML estática simples com seu nome e a disciplina.
-2. Altere a porta padrão do Nginx (de 80 para 8080) editando `/etc/nginx/sites-available/default` e reinicie o serviço.
-3. Suba duas aplicações simples em portas diferentes (3000 e 3001) e configure o Nginx para redirecionar `/app1` para uma e `/app2` para outra.
-4. Configure um `upstream` com as duas aplicações do exercício anterior e teste o balanceamento round robin, atualizando a página várias vezes.
-5. Configure `max_fails` e `fail_timeout` no `upstream`, derrube uma das aplicações de propósito, e observe pelo `access.log`/`error.log` o Nginx deixando de enviar tráfego para ela.
-6. Adicione um cabeçalho de resposta customizado (`add_header`) no Nginx e confirme que ele aparece na resposta usando `curl -I http://localhost`.
-7. Desafio: instale também o Apache (`apache2`) em outra porta e mantenha os dois rodando simultaneamente sem conflito; compare, em texto, uma vantagem e uma desvantagem do Nginx frente ao Apache.
+1. Suba duas aplicações simples em portas diferentes (3000 e 3001) e configure o Nginx para redirecionar `/app1` para uma e `/app2` para outra.
+2. Configure um `upstream` com as duas aplicações do exercício anterior e teste o balanceamento round robin, atualizando a página várias vezes.
+3. Configure `max_fails` e `fail_timeout` no `upstream`, derrube uma das aplicações de propósito, e observe pelo `access.log`/`error.log` o Nginx deixando de enviar tráfego para ela.
+4. Adicione um cabeçalho de resposta customizado (`add_header`) no Nginx e confirme que ele aparece na resposta usando `curl -I http://localhost`.
+5. Explique, em texto, por que normalmente não se expõe a aplicação diretamente à internet, preferindo colocá-la atrás de um proxy reverso.
 
 ---
 
