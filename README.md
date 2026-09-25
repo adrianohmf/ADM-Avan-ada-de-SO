@@ -1426,7 +1426,11 @@ curl http://localhost:3002
 
 > Para encerrar os três processos depois dos testes: `kill %1 %2 %3` (referindo-se aos jobs colocados em background), ou `pkill -f http.server`.
 
-Com os três backends no ar, configure o `upstream` do Nginx apontando para eles:
+Com os três backends no ar, configure o `upstream` do Nginx apontando para eles, editando `/etc/nginx/sites-available/default`:
+
+```bash
+sudo nano /etc/nginx/sites-available/default
+```
 
 ```nginx
 upstream meu_backend {
