@@ -1498,7 +1498,6 @@ Duas otimizações comuns aplicadas na camada de proxy reverso, antes mesmo de a
 
 ```nginx
 # Compressão gzip das respostas — reduz o tamanho transferido pela rede
-gzip on;
 gzip_types text/plain text/css application/json application/javascript;
 
 # Cache de respostas do backend, evitando repetir processamento
@@ -1513,25 +1512,18 @@ server {
 }
 ```
 
-### Cabeçalhos de segurança e WebSockets
+Se estiver criando o `proxy_cache_path` pela primeira vez, garanta que o diretório de cache existe e tem permissão de escrita:
 
-Alguns cabeçalhos de resposta ajudam a proteger a aplicação contra ataques comuns, e podem ser adicionados diretamente no Nginx, sem precisar alterar o código da aplicação:
-
-```nginx
-add_header X-Frame-Options "SAMEORIGIN";
-add_header X-Content-Type-Options "nosniff";
-add_header X-XSS-Protection "1; mode=block";
+```bash
+sudo mkdir -p /var/cache/nginx
+sudo chown -R www-data:www-data /var/cache/nginx
 ```
 
-Se a aplicação usa **WebSockets** (conexões persistentes, comuns em chats e notificações em tempo real), o proxy reverso precisa de cabeçalhos extras para não derrubar a conexão:
+E sempre teste antes de recarregar:
 
-```nginx
-location /ws/ {
-    proxy_pass http://meu_backend;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ### Logs de acesso e erro
