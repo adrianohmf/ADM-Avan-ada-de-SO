@@ -36,7 +36,7 @@ docker volume rm dados_app
 docker network create minha-rede
 
 # Rodar dois containers na mesma rede — eles conseguem se comunicar pelo nome
-docker run -d --network minha-rede --name banco postgres:16
+docker run -d --network minha-rede --name banco -e POSTGRES_PASSWORD=12345 postgres:16
 docker run -d --network minha-rede --name app minha-app:1.0
 
 # Listar redes
