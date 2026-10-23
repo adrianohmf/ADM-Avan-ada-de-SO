@@ -294,12 +294,17 @@ docker system df
 # Remover containers parados
 docker container prune
 
-# Remover imagens sem uso (as "dangling")
+# Remover imagens "dangling" (soltas, sem nome e sem tag)
 docker image prune
 
-# Limpeza geral: containers parados, redes sem uso e imagens sem uso
+# Remover todas as imagens que nenhum container usa (não só as dangling)
+docker image prune -a
+
+# Limpeza geral: containers parados, redes sem uso e imagens dangling
 docker system prune
 ```
+
+> **O que é uma imagem *dangling*?** É uma imagem "solta", sem nome e sem tag, que aparece como `<none>:<none>` no `docker images`. Ela costuma surgir quando você reconstrói uma imagem com a mesma tag (por exemplo, `docker build -t minha-app:1.0 .` pela segunda vez): a tag passa para a imagem nova e a versão antiga fica órfã, ocupando disco. Para listar só essas imagens, use `docker images -f dangling=true`.
 
 ## Boas práticas de Dockerfile
 
