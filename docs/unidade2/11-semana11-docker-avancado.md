@@ -82,11 +82,126 @@ CMD ["8000"]
 
 > As boas práticas gerais de Dockerfile (imagens `slim`, `.dockerignore`, ordem das camadas) estão na Semana 10 e continuam valendo aqui.
 
+## Prática: observando o `HEALTHCHECK` funcionar
+
+Um container pode estar com o processo rodando (`Up`) e a aplicação travada ou quebrada por dentro. O `HEALTHCHECK` resolve isso: o Docker executa um teste periódico e marca o container como `healthy` ou `unhealthy`. Nesta prática você vai ver os dois estados acontecerem.
+
+**1. Prepare uma pasta com a aplicação**
+
+```bash
+mkdir ~/app-saude
+cd ~/app-saude
+
+echo "<h1>Estou saudável</h1>" > index.html
+nano Dockerfile
+```
+
+Conteúdo do `Dockerfile`:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY index.html .
+
+RUN useradd -m appuser
+USER appuser
+
+EXPOSE 8000
+
+# O teste pede a página index.html; se ela não existir (erro 404), o teste falha
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/index.html')" || exit 1
+
+CMD ["python3", "-m", "http.server", "8000"]
+```
+
+Os parâmetros do `HEALTHCHECK`:
+
+| Parâmetro | Significado |
+|---|---|
+| `--interval` | De quanto em quanto tempo o teste roda |
+| `--timeout` | Tempo máximo para o teste responder, senão conta como falha |
+| `--start-period` | Tempo de tolerância na inicialização, em que falhas ainda não contam |
+| `--retries` | Quantas falhas seguidas são necessárias para virar `unhealthy` |
+
+O comando do teste precisa terminar com código **0** (saudável) ou **1** (com problema), o mesmo conceito de *exit code* da Semana 5.
+
+**2. Construa e rode com tempos curtos**
+
+Para não esperar 30 segundos a cada teste, os valores podem ser trocados no `docker run`:
+
+```bash
+docker build -t app-saude:1.0 .
+
+docker run -d -p 8001:8000 --name saude \
+  --health-interval=5s --health-timeout=3s --health-retries=2 \
+  app-saude:1.0
+```
+
+**3. Observe o estado saudável**
+
+```bash
+# A coluna STATUS mostra (health: starting) e depois (healthy)
+docker ps
+
+# Só o estado de saúde
+docker inspect -f '{{.State.Health.Status}}' saude
+
+# Teste no navegador ou no terminal
+curl http://localhost:8001
+```
+
+**4. Quebre a aplicação de propósito**
+
+Apague a página dentro do container. O processo do Python continua rodando, mas o teste vai começar a falhar.
+
+```bash
+docker exec -u root saude rm /app/index.html
+
+# Aguarde cerca de 15 segundos e confira de novo
+docker ps
+docker inspect -f '{{.State.Health.Status}}' saude
+```
+
+O estado deve mudar para `unhealthy`. Veja o histórico dos testes, com o código de saída e a mensagem de erro de cada um:
+
+```bash
+docker inspect -f '{{range .State.Health.Log}}saida={{.ExitCode}} {{.Output}}{{"\n"}}{{end}}' saude
+```
+
+Note que o container continua com status `Up`. Só o estado de saúde mudou.
+
+**5. Recupere a aplicação**
+
+```bash
+docker cp index.html saude:/app/index.html
+
+# Em alguns segundos volta para healthy
+docker inspect -f '{{.State.Health.Status}}' saude
+```
+
+**6. Perguntas para responder**
+
+- O Docker reiniciou o container quando ele ficou `unhealthy`? (Dica: confira o `docker ps -a` e o tempo de atividade. Por padrão, o Docker só **sinaliza** o problema e não reinicia sozinho. Quem reage a isso são ferramentas acima dele, como o Compose, na próxima semana, e orquestradores como o Kubernetes.)
+- Por que o teste usa `/index.html` e não apenas `/`? O que aconteceria com o `/` quando a página não existe?
+- Por que existe o `--start-period`? Que problema ele evita em aplicações lentas para iniciar?
+
+**7. Limpeza**
+
+```bash
+docker rm -f saude
+docker rmi app-saude:1.0
+```
+
+> **Por que isso importa:** na Semana 12, o Docker Compose poderá esperar um serviço ficar `healthy` antes de iniciar outro (por exemplo, a aplicação só sobe depois que o banco de dados estiver pronto), usando `depends_on` com `condition: service_healthy`.
+
 ## Exercícios
 
 1. Crie um volume e rode um container de banco de dados (ex.: `postgres` ou `mysql`) usando-o, confirmando que os dados persistem após `docker stop`/`docker start`.
 2. Crie uma rede customizada e coloque dois containers nela, confirmando que um consegue acessar o outro pelo nome (`docker exec` em um deles e `ping` ou `curl` no outro).
-3. Adicione `USER`, `ENV` e `HEALTHCHECK` ao Dockerfile da Semana 10 e observe o estado `healthy` no `docker ps`.
+3. Adicione `USER` e `ENV` ao Dockerfile da Semana 10 e confirme com `docker exec minha-app whoami` e `docker exec minha-app env`.
+4. Faça a prática do `HEALTHCHECK` e depois repita, mudando o teste para consultar uma porta errada (por exemplo `localhost:9000`). Observe o container ficar `unhealthy` desde o início.
 
 ---
 
