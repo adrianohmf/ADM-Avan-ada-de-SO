@@ -250,7 +250,16 @@ docker cp index.html meu-nginx:/usr/share/nginx/html/index.html
 docker cp meu-nginx:/etc/nginx/nginx.conf ./nginx.conf
 ```
 
-Experimente o `docker cp` com a página `index.html` da Semana 6: copie para dentro do container do Nginx e atualize o navegador em `http://localhost:8080`.
+O formato é `docker cp ORIGEM DESTINO`. O caminho do seu computador vai sem prefixo, e o do container leva o nome na frente (`NOME:/caminho`). O caminho de destino precisa existir **no container escolhido**: a pasta `/usr/share/nginx/html` só existe em containers do Nginx, e não no container Python da aplicação (que usa `/app`).
+
+Experimente com a página `index.html` da Semana 6, que está na sua pasta `~/minha-app`:
+
+```bash
+cd ~/minha-app
+docker cp index.html meu-nginx:/usr/share/nginx/html/index.html
+```
+
+Depois atualize o navegador em `http://localhost:8080`. Para conferir o que existe dentro de um container antes de copiar, use `docker exec meu-nginx ls /usr/share/nginx/html`.
 
 > Alterações feitas dentro de um container em execução (com `docker exec` ou `docker cp`) **somem quando ele é removido**. Para algo permanente, a mudança deve entrar na imagem (Dockerfile) ou em um volume (Semana 11).
 
@@ -402,7 +411,7 @@ docker rmi minha-app:sem-ignore minha-app:com-ignore
 5. Meça o consumo: rode `docker run -d --name n1 nginx`, depois `n2` e `n3` (portas diferentes). Compare `docker stats --no-stream`, `free -h` antes e depois, e `docker images` (tamanho). Rode também `uname -r` no WSL2 e `docker exec n1 uname -r` e explique por que o resultado é igual.
 6. Rode `docker run -it --rm ubuntu bash` e dentro dele execute `cat /etc/os-release` e `ps aux`. Compare com o seu WSL2.
 7. Rode um container com `--memory=128m` e confirme o limite em `docker stats`.
-8. Use `docker cp` para trocar a página padrão do Nginx pelo `index.html` da Semana 6.
+8. Com o container `meu-nginx` rodando, entre na pasta `~/minha-app` e use `docker cp index.html meu-nginx:/usr/share/nginx/html/index.html` para trocar a página padrão do Nginx pela página da Semana 6. Confirme em `http://localhost:8080`. Desafio: faça o mesmo no container Python (`minha-app`), descobrindo antes, com `docker exec minha-app ls /app`, qual é a pasta de destino.
 9. Faça a prática do `.dockerignore` e depois rode `docker history minha-app:1.0` para ver as camadas.
 10. Crie uma conta no Docker Hub, faça `docker tag` e `docker push` da sua imagem e peça para um colega fazer `docker pull`.
 
