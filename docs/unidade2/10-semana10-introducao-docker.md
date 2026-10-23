@@ -405,7 +405,6 @@ docker rmi minha-app:sem-ignore minha-app:com-ignore
 8. Use `docker cp` para trocar a página padrão do Nginx pelo `index.html` da Semana 6.
 9. Faça a prática do `.dockerignore` e depois rode `docker history minha-app:1.0` para ver as camadas.
 10. Crie uma conta no Docker Hub, faça `docker tag` e `docker push` da sua imagem e peça para um colega fazer `docker pull`.
-11. Provoque de propósito o erro de nome em uso (rode duas vezes o mesmo `docker run --name`) e resolva usando `docker ps -a` e `docker rm`.
 
 ---
 
