@@ -61,7 +61,7 @@ docker top meu-nginx
 docker inspect meu-nginx
 
 # Só o IP do container, usando um filtro de formato
-docker inspect -f '{{ .NetworkSettings.IPAddress }}' meu-nginx
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' banco
 
 # Acompanhar logs em tempo real, mostrando as últimas 20 linhas
 docker logs -f --tail 20 meu-nginx
