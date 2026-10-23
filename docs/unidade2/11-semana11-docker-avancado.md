@@ -8,7 +8,7 @@ Containers são, por natureza, **efêmeros**: ao serem removidos, tudo que foi e
 
 ![Volumes do Docker](../../images/docker_volumes.png)
 
-Além disso, containers se comunicam entre si através de **redes Docker**, e imagens mais eficientes são construídas com a técnica de **multi-stage build**, que separa a etapa de compilação da etapa final de execução, reduzindo bastante o tamanho da imagem.
+Além disso, containers se comunicam entre si através de **redes Docker**.
 
 ## Comandos essenciais — volumes
 
@@ -47,25 +47,6 @@ docker network inspect minha-rede
 ```
 
 > Dentro da rede `minha-rede`, o container `app` pode acessar o banco simplesmente usando o hostname `banco` — o Docker resolve isso internamente, sem precisar saber o IP.
-
-## Multi-stage build
-
-Uma imagem construída direto com as ferramentas de compilação (compiladores, gerenciadores de pacote completos) costuma ficar desnecessariamente grande. O **multi-stage build** usa uma etapa só para compilar, e copia apenas o resultado final para a imagem que efetivamente vai rodar:
-
-```dockerfile
-# Etapa 1: build (imagem maior, com ferramentas de compilação)
-FROM node:20 AS build
-WORKDIR /app
-COPY . .
-RUN npm install && npm run build
-
-# Etapa 2: imagem final (muito mais enxuta)
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-```
-
-A imagem final não carrega o Node.js nem as dependências de build — só o resultado (os arquivos estáticos), servidos por um Nginx enxuto (`alpine`).
 
 ## Mais instruções do Dockerfile
 
@@ -106,7 +87,6 @@ CMD ["8000"]
 1. Crie um volume e rode um container de banco de dados (ex.: `postgres` ou `mysql`) usando-o, confirmando que os dados persistem após `docker stop`/`docker start`.
 2. Crie uma rede customizada e coloque dois containers nela, confirmando que um consegue acessar o outro pelo nome (`docker exec` em um deles e `ping` ou `curl` no outro).
 3. Adicione `USER`, `ENV` e `HEALTHCHECK` ao Dockerfile da Semana 10 e observe o estado `healthy` no `docker ps`.
-4. Desafio: reescreva o `Dockerfile` da Semana 10 usando multi-stage build (mesmo que de forma simulada) e compare o tamanho final da imagem com `docker images`.
 
 ---
 

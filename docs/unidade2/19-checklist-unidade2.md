@@ -6,7 +6,6 @@
 - [ ] Primeira imagem construída a partir de um Dockerfile próprio
 - [ ] Volumes testados, confirmando persistência de dados
 - [ ] Rede customizada criada, com containers se comunicando pelo nome
-- [ ] Multi-stage build praticado (ou ao menos compreendido)
 - [ ] Stack completa (app + banco + proxy) orquestrada via Docker Compose
 - [ ] Workflow de GitHub Actions criado e disparando a cada push
 - [ ] Pipeline completa: build, testes, push da imagem para um registry
