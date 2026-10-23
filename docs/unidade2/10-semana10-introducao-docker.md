@@ -326,18 +326,72 @@ Dockerfile
 .dockerignore
 ```
 
-## Solução de problemas comuns
+## Prática: o que o `.dockerignore` muda na imagem
 
-| Mensagem ou sintoma | Causa | Solução |
-|---|---|---|
-| `Conflict. The container name "/minha-app" is already in use` | Já existe um container (mesmo parado) com esse nome | `docker ps -a` e depois `docker rm -f minha-app` |
-| `port is already allocated` | Outro container ou programa já usa a porta do host | Troque a porta da esquerda no `-p` (ex.: `-p 8081:8000`) |
-| A página não abre no navegador | Porta do container diferente da usada pela aplicação | Confira o `CMD` e use `-p PORTA_HOST:PORTA_DA_APLICACAO` |
-| Container em `Exited` logo após iniciar | O processo principal terminou ou deu erro | `docker logs NOME` para ver o motivo |
-| `permission denied` ao usar o Docker | Seu usuário não está no grupo `docker` | `sudo usermod -aG docker $USER` e abra um novo terminal |
-| `docker rm` diz que o container não existe | Nome digitado errado | Confira o nome exato na coluna `NAMES` do `docker ps -a` |
+Nesta prática você vai ver um arquivo secreto "vazar" para dentro de uma imagem e depois impedir isso com o `.dockerignore`. Use a pasta `~/minha-app` criada antes, com o `Dockerfile` e o `index.html`.
 
-O formato do mapeamento de portas é sempre `-p PORTA_DO_HOST:PORTA_DO_CONTAINER`.
+**1. Crie arquivos que não deveriam entrar na imagem**
+
+```bash
+cd ~/minha-app
+
+# Um "segredo" de mentira, como um arquivo .env de verdade teria
+echo "SENHA_DO_BANCO=123456" > .env
+
+# Um arquivo grande, simulando logs ou dependências pesadas (50 MB)
+dd if=/dev/zero of=arquivo-grande.bin bs=1M count=50
+```
+
+**2. Construa a imagem sem `.dockerignore` e inspecione**
+
+```bash
+docker build -t minha-app:sem-ignore .
+
+# Conferir o que foi copiado para dentro da imagem
+docker run --rm minha-app:sem-ignore ls -la /app
+
+# O segredo está acessível para quem tiver a imagem
+docker run --rm minha-app:sem-ignore cat /app/.env
+```
+
+Repare na mensagem `transferring context` durante o build (o contexto levou os 50 MB) e no `.env` aparecendo dentro da imagem. Quem baixar essa imagem do Docker Hub consegue ler a senha.
+
+**3. Crie o `.dockerignore`**
+
+```bash
+printf '.env\n*.bin\n.git\nDockerfile\n.dockerignore\n' > .dockerignore
+cat .dockerignore
+```
+
+**4. Construa de novo e compare**
+
+```bash
+docker build -t minha-app:com-ignore .
+
+# O .env e o arquivo grande não devem mais aparecer
+docker run --rm minha-app:com-ignore ls -la /app
+
+# Deve dar erro: "No such file or directory"
+docker run --rm minha-app:com-ignore cat /app/.env
+
+# Comparar o tamanho das duas imagens
+docker images minha-app
+```
+
+**5. Perguntas para responder**
+
+- Qual a diferença de tamanho entre `sem-ignore` e `com-ignore`? Por que ela existe?
+- O `transferring context` do segundo build foi menor? Por quê?
+- Se a imagem `sem-ignore` já tivesse sido publicada no Docker Hub, apagar o arquivo depois resolveria o problema? (Dica: lembre das camadas e do que foi dito sobre segredos no histórico do Git. A senha deveria ser considerada vazada e trocada.)
+
+**6. Limpeza**
+
+```bash
+rm .env arquivo-grande.bin
+docker rmi minha-app:sem-ignore minha-app:com-ignore
+```
+
+> **Regra prática:** tudo que você não colocaria em um repositório público (senhas, `.env`, chaves) também não deve entrar na imagem. Na Semana 11 você verá como passar esses valores em tempo de execução, sem gravá-los na imagem.
 
 ## Exercícios
 
@@ -349,7 +403,7 @@ O formato do mapeamento de portas é sempre `-p PORTA_DO_HOST:PORTA_DO_CONTAINER
 6. Rode `docker run -it --rm ubuntu bash` e dentro dele execute `cat /etc/os-release` e `ps aux`. Compare com o seu WSL2.
 7. Rode um container com `--memory=128m` e confirme o limite em `docker stats`.
 8. Use `docker cp` para trocar a página padrão do Nginx pelo `index.html` da Semana 6.
-9. Crie o `.dockerignore` para a pasta `~/minha-app` e rode `docker history minha-app:1.0` para ver as camadas.
+9. Faça a prática do `.dockerignore` e depois rode `docker history minha-app:1.0` para ver as camadas.
 10. Crie uma conta no Docker Hub, faça `docker tag` e `docker push` da sua imagem e peça para um colega fazer `docker pull`.
 11. Provoque de propósito o erro de nome em uso (rode duas vezes o mesmo `docker run --name`) e resolva usando `docker ps -a` e `docker rm`.
 
