@@ -133,6 +133,35 @@ Os comandos `start`, `stop` e `restart` também existem (`docker compose stop`, 
 
 Você vai montar a stack do exemplo acima, testar a comunicação entre os serviços e comprovar a persistência dos dados.
 
+**0. Confirme que o Docker Compose está instalado**
+
+Antes de começar, verifique se o Compose está disponível no seu WSL2:
+
+```bash
+docker compose version
+```
+
+Se aparecer algo como `Docker Compose version v2.x.x`, siga para o passo 1. Se der erro de comando não encontrado, veja abaixo qual é o seu caso.
+
+| Como o Docker foi instalado | O Compose já vem? |
+|---|---|
+| Docker Desktop no Windows, com a integração WSL ativada | Sim, não precisa instalar nada |
+| Docker Engine pelo repositório oficial da Docker | Normalmente sim (pacote `docker-compose-plugin`) |
+| Pacote `docker.io` do Ubuntu | Em geral não, é preciso instalar |
+
+Para instalar no Ubuntu do WSL2:
+
+```bash
+sudo apt update
+sudo apt install docker-compose-v2
+```
+
+Se o `apt` não encontrar esse pacote, use o nome `docker-compose-plugin`, que vem do repositório oficial da Docker. Depois confirme novamente com `docker compose version`.
+
+> **Se você usa o Docker Desktop**, abra Settings, Resources, WSL Integration e confirme que a sua distribuição está ativada. Sem isso, o comando `docker` não aparece dentro do WSL2.
+
+> **Não instale o pacote `docker-compose`** (com hífen). Ele é a versão 1, descontinuada, e usa o comando antigo `docker-compose`. Neste material usamos sempre `docker compose`, com espaço.
+
 **1. Crie a estrutura de pastas**
 
 ```bash
