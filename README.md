@@ -7,7 +7,7 @@
 ## Como o material está organizado
 
 - **Unidade 1 (Semanas 1 a 9):** Fundamentos, Linux + servidor web. A Semana 9 é o seminário avaliativo.
-- **Unidade 2 (Semanas 10 a 18):** Docker + CI/CD com GitHub Actions, projeto final, acompanhamento nas Semanas 15 a 17 e apresentação na Semana 18.
+- **Unidade 2 (Semanas 10 a 18):** Docker + CI/CD com GitHub Actions, projeto final em trios (acompanhamento em 04/12) e apresentação em 11/12.
 - Cada assunto está em um arquivo próprio dentro da pasta `docs/`, e as imagens ficam em `images/`.
 - A Unidade 2 dá continuidade à mesma aplicação configurada manualmente na Unidade 1.
 
@@ -43,9 +43,8 @@
 - [Semana 12: Docker Compose](docs/unidade2/12-semana12-docker-compose.md)
 - [Semana 13: Introdução a CI/CD e GitHub Actions](docs/unidade2/13-semana13-cicd-github-actions.md)
 - [Semana 14: Pipeline completo e lançamento do projeto](docs/unidade2/14-semana14-pipeline-completo.md)
-- [Semanas 15 a 17: Acompanhamento do projeto](docs/unidade2/15-semanas15-17-acompanhamento.md)
+- [Projeto Final: ambiente em camadas, do código à nuvem](docs/unidade2/15-projeto-final.md)
 - [Semana 18: Apresentação final do projeto](docs/unidade2/18-semana18-apresentacao-final.md)
-- [Checklist geral (Semanas 10 a 18)](docs/unidade2/19-checklist-unidade2.md)
 
 ### Material complementar
 

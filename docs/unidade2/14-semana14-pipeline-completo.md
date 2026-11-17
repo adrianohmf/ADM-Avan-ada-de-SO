@@ -1,4 +1,4 @@
-[← Anterior: Semana 13: Introdução a CI/CD e GitHub Actions](13-semana13-cicd-github-actions.md) | [Índice](../../README.md) | [Próximo: Semanas 15 a 17: Acompanhamento do projeto →](15-semanas15-17-acompanhamento.md)
+[← Anterior: Semana 13: Introdução a CI/CD e GitHub Actions](13-semana13-cicd-github-actions.md) | [Índice](../../README.md) | [Próximo: Projeto Final →](15-projeto-final.md)
 
 # Semana 14 — Pipeline completo e lançamento do projeto
 
@@ -47,21 +47,19 @@ jobs:
 
 ## Lançamento do projeto final
 
-A partir desta semana, começa o **projeto final da disciplina**: aplicar, em uma aplicação de verdade (de preferência a mesma evoluída desde a Unidade 1), tudo que foi visto na Unidade 2.
+A partir desta semana, começa o **projeto final da disciplina**, feito em **trios**: construir o ambiente de uma aplicação web em camadas (front, back, banco, Nginx), com Compose para desenvolvimento e produção, pipeline de CI/CD com testes, deploy preferencialmente na nuvem com **HTTPS**, e monitoramento com Prometheus e/ou Grafana.
 
-**Entrega esperada:**
-- Repositório no GitHub com `Dockerfile` e `docker-compose.yml` funcionais.
-- Workflow de GitHub Actions rodando build, testes e push da imagem para um registry (Docker Hub ou GHCR).
-- Deploy automatizado (pode ser simplificado/simulado, dependendo do ambiente disponível).
-- `README.md` documentando como rodar o projeto.
+O projeto é entregue **pelo GitHub** e vale **10 pontos**. Todos os requisitos, o que deve ter no `README.md` e a avaliação estão em [Projeto Final](15-projeto-final.md).
+
+**Datas:** acompanhamento em **04/12** e apresentação em **11/12**.
 
 ## Exercícios
 
-1. Defina, em grupo, qual aplicação será usada no projeto final (pode reaproveitar a da Unidade 1).
-2. Monte o repositório no GitHub com `Dockerfile` e `docker-compose.yml`.
+1. Forme o trio e defina qual aplicação será usada no projeto final (um CRUD simples já basta).
+2. Crie o repositório no GitHub com a estrutura de camadas (front, back, banco, Nginx) e os arquivos do Compose.
 3. Configure o workflow de build + push da imagem para um registry.
 4. Desafio: pesquise uma forma de automatizar o passo de deploy de verdade (ex.: SSH para um servidor próprio, ou um serviço gratuito como Railway/Render), e, se possível, implemente.
 
 ---
 
-[← Anterior: Semana 13: Introdução a CI/CD e GitHub Actions](13-semana13-cicd-github-actions.md) | [Índice](../../README.md) | [Próximo: Semanas 15 a 17: Acompanhamento do projeto →](15-semanas15-17-acompanhamento.md)
+[← Anterior: Semana 13: Introdução a CI/CD e GitHub Actions](13-semana13-cicd-github-actions.md) | [Índice](../../README.md) | [Próximo: Projeto Final →](15-projeto-final.md)

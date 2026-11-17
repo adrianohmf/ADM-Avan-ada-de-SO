@@ -1,23 +1,32 @@
-[← Anterior: Semanas 15 a 17: Acompanhamento do projeto](15-semanas15-17-acompanhamento.md) | [Índice](../../README.md) | [Próximo: Checklist geral (Semanas 10 a 18) →](19-checklist-unidade2.md)
+[← Anterior: Projeto Final: ambiente em camadas, do código à nuvem](15-projeto-final.md) | [Índice](../../README.md) | [Próximo: Introdução a Kubernetes (opcional) →](../complementar/kubernetes.md)
 
 # Semana 18 — Apresentação final do projeto
 
-Cada grupo apresenta o projeto desenvolvido ao longo da Unidade 2, demonstrando:
+Cada trio apresenta o projeto desenvolvido ao longo da Unidade 2. A descrição completa do projeto, os requisitos e a avaliação (10 pontos) estão em [Projeto Final](15-projeto-final.md).
 
-1. A aplicação containerizada rodando (`docker compose up`).
-2. O pipeline de CI/CD funcionando — idealmente, uma alteração real sendo enviada ao repositório durante a apresentação, mostrando o workflow disparando automaticamente.
-3. O deploy automatizado (ou simulado) resultando na aplicação atualizada.
-4. A documentação do projeto.
+**Data da apresentação: 11/12.**
 
-## Critérios de avaliação
+## Roteiro da demonstração
 
-- Containerização correta da aplicação (Dockerfile e Docker Compose funcionais)
-- Pipeline de CI/CD funcional (build, testes, push para registry)
-- Deploy automatizado funcionando de ponta a ponta
-- Qualidade da documentação (README do repositório)
-- Histórico de commits/PRs como evidência do processo de desenvolvimento
-- Apresentação final: clareza da demonstração e domínio técnico do grupo
+1. O ambiente de desenvolvimento rodando, com uma alteração aparecendo na hora.
+2. Um commit enviado ao repositório e o pipeline disparando (testes, build e push das imagens, deploy e teste pós deploy).
+3. A aplicação atualizada, acessada pela URL pública em **HTTPS**.
+4. O painel de monitoramento (Prometheus e/ou Grafana), se houver.
+5. O `README.md` do repositório e a tag `v1.0`.
+
+Depois da demonstração, o professor faz perguntas e pede a cada integrante que explique uma parte do projeto.
+
+## Antes de apresentar
+
+- O link do repositório do GitHub foi enviado ao professor.
+- O ambiente na nuvem está no ar e o pipeline está verde.
+- Nenhuma senha, token ou chave está no repositório.
+- Todos do trio sabem explicar todas as camadas.
+
+## Depois da avaliação
+
+Se usou recursos pagos ou com créditos na nuvem, **destrua os recursos** (servidor, disco, IP fixo) para não gerar custos.
 
 ---
 
-[← Anterior: Semanas 15 a 17: Acompanhamento do projeto](15-semanas15-17-acompanhamento.md) | [Índice](../../README.md) | [Próximo: Checklist geral (Semanas 10 a 18) →](19-checklist-unidade2.md)
+[← Anterior: Projeto Final: ambiente em camadas, do código à nuvem](15-projeto-final.md) | [Índice](../../README.md) | [Próximo: Introdução a Kubernetes (opcional) →](../complementar/kubernetes.md)

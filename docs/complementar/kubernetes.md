@@ -1,4 +1,4 @@
-[← Anterior: Checklist geral (Semanas 10 a 18)](../unidade2/19-checklist-unidade2.md) | [Índice](../../README.md) | [Próximo: Referências →](../referencias.md)
+[← Anterior: Semana 18: Apresentação final do projeto](../unidade2/18-semana18-apresentacao-final.md) | [Índice](../../README.md) | [Próximo: Referências →](../referencias.md)
 
 # Material complementar (opcional) — Introdução a Kubernetes
 
@@ -96,4 +96,4 @@ Esse é o coração do Kubernetes: você declara **o que quer** (3 réplicas do 
 
 ---
 
-[← Anterior: Checklist geral (Semanas 10 a 18)](../unidade2/19-checklist-unidade2.md) | [Índice](../../README.md) | [Próximo: Referências →](../referencias.md)
+[← Anterior: Semana 18: Apresentação final do projeto](../unidade2/18-semana18-apresentacao-final.md) | [Índice](../../README.md) | [Próximo: Referências →](../referencias.md)
