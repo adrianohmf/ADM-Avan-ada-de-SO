@@ -300,6 +300,227 @@ curl http://localhost:8080
 docker compose down -v
 ```
 
+## Compose com dois ambientes: desenvolvimento e produção
+
+A mesma aplicação costuma rodar em ambientes diferentes, e cada um tem necessidades próprias:
+
+| | Desenvolvimento | Produção |
+|---|---|---|
+| **Código** | Montado do seu computador em um volume, e a alteração aparece na hora | Dentro da imagem, versionada e imutável |
+| **Imagem** | Construída localmente (`build`) | Imagem publicada com tag (`image`), vinda de um registry |
+| **Portas** | Abertas para depuração (banco, ferramentas de administração), só no `localhost` | Somente o Nginx fica exposto |
+| **Reinício** | Não precisa | `restart: unless-stopped` |
+| **Senhas** | `.env` local, com valores de teste | `.env` no servidor, nunca no Git |
+| **Extras** | Ferramentas de apoio (por exemplo, um painel do banco) | Só o que a aplicação precisa |
+
+Manter dois arquivos completos e quase iguais gera erro e retrabalho. O Compose resolve isso com **arquivos de sobreposição**: um arquivo **base** com o que é comum e um arquivo **específico** de cada ambiente, que só descreve o que muda.
+
+```
+docker-compose.yml            (base: o que é igual nos dois ambientes)
+docker-compose.override.yml   (desenvolvimento: carregado automaticamente)
+docker-compose.prod.yml       (produção: escolhido com -f)
+```
+
+### Como o Compose combina os arquivos
+
+- Quando você roda `docker compose up` **sem** `-f`, o Compose lê o `docker-compose.yml` e **também** o `docker-compose.override.yml`, se existir. Por isso o override é o lugar natural do ambiente de desenvolvimento.
+- Quando você usa `-f`, **só os arquivos listados** são lidos, na ordem. O override automático **não** é carregado.
+- Valores simples (como `image` e `restart`) do arquivo seguinte **substituem** os do anterior. Listas (como `ports` e `volumes`) são **somadas**. Mapas (como `environment`) são **mesclados**.
+
+```bash
+# Desenvolvimento: base + override, automático
+docker compose up -d
+
+# Produção: base + arquivo de produção, escolhido por você
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Conferir o resultado final da combinação, sem subir nada
+docker compose -f docker-compose.yml -f docker-compose.prod.yml config
+```
+
+Para rodar os dois ambientes ao mesmo tempo na mesma máquina, dê **um nome de projeto diferente** ao segundo, com `-p`. Sem isso, o Compose usaria o mesmo nome (o da pasta) e um ambiente sobrescreveria o outro, incluindo containers, rede e volume.
+
+```bash
+docker compose -p stack-prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+> Dica: um serviço pode existir só no arquivo de desenvolvimento. Ele simplesmente não aparece em produção.
+
+## Prática: dois ambientes com a mesma stack
+
+Você vai transformar a stack da prática anterior (`~/stack`) em dois ambientes: um de desenvolvimento, com alterações instantâneas e um painel do banco, e um de produção, enxuto e exposto só pelo Nginx.
+
+**1. Limpe a prática anterior**
+
+```bash
+cd ~/stack
+docker compose down -v
+```
+
+**2. Reescreva o arquivo base**
+
+O arquivo base fica só com o que é comum. Repare que o serviço `app` não tem `build` nem `image`, e o Nginx não tem `ports`: isso é decidido em cada ambiente.
+
+```bash
+nano docker-compose.yml
+```
+
+```yaml
+services:
+  app:
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: meubanco
+    volumes:
+      - dados_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d meubanco"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+volumes:
+  dados_db:
+```
+
+**3. Crie o arquivo de desenvolvimento (override)**
+
+```bash
+nano docker-compose.override.yml
+```
+
+```yaml
+services:
+  app:
+    build: ./app
+    volumes:
+      - ./app:/app
+
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  nginx:
+    ports:
+      - "8080:80"
+
+  adminer:
+    image: adminer
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      - db
+```
+
+O `127.0.0.1:` na frente da porta faz o banco e o painel ficarem acessíveis **somente do seu computador**, e não da rede.
+
+**4. Crie o arquivo de produção**
+
+```bash
+nano docker-compose.prod.yml
+```
+
+```yaml
+services:
+  app:
+    image: stack-app:prod
+    restart: unless-stopped
+
+  db:
+    restart: unless-stopped
+
+  nginx:
+    ports:
+      - "8090:80"
+    restart: unless-stopped
+```
+
+Num projeto real, a imagem de produção viria de um registry (por exemplo, `ghcr.io/SEU_USUARIO/stack-app:1.0`). Aqui usamos uma imagem construída localmente com a tag `prod` para simular isso.
+
+**5. Suba o ambiente de desenvolvimento**
+
+```bash
+docker compose up -d
+docker compose ps
+
+curl http://localhost:8080
+```
+
+Abra o painel do banco em `http://localhost:8081`. Escolha o sistema **PostgreSQL**, servidor `db`, usuário `postgres`, a senha do seu `.env` e o banco `meubanco`.
+
+**6. Veja a alteração instantânea**
+
+```bash
+echo "<h1>Alterei no ambiente de desenvolvimento</h1>" > app/index.html
+curl http://localhost:8080
+```
+
+A página mudou **sem reconstruir a imagem**, porque a pasta `app` do seu computador está montada dentro do container.
+
+**7. Suba o ambiente de produção ao lado**
+
+```bash
+# Gerar a imagem de produção (o código vai para dentro dela)
+docker build -t stack-app:prod ./app
+
+# Subir com outro nome de projeto, para não colidir com o desenvolvimento
+docker compose -p stack-prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -p stack-prod ps
+
+curl http://localhost:8090
+```
+
+Agora altere o `app/index.html` de novo e compare:
+
+```bash
+echo "<h1>Segunda alteração</h1>" > app/index.html
+curl http://localhost:8080
+curl http://localhost:8090
+```
+
+A porta 8080 (desenvolvimento) mostra a página nova. A 8090 (produção) continua com a anterior, porque o código está **dentro da imagem**. Para atualizar a produção seria preciso gerar uma nova imagem e subir de novo.
+
+**8. Compare os dois ambientes**
+
+```bash
+docker ps
+docker compose config
+docker compose -p stack-prod -f docker-compose.yml -f docker-compose.prod.yml config
+```
+
+Confira quais portas estão publicadas em cada ambiente e o que existe só no desenvolvimento (o `adminer`).
+
+**9. Perguntas para responder**
+
+- Por que o serviço `app` do arquivo base não tem `build` nem `image`?
+- O que acontece com o `docker-compose.override.yml` quando você usa `-f` para escolher os arquivos?
+- Por que a porta do banco no desenvolvimento usa `127.0.0.1:5432:5432` e não apenas `5432:5432`?
+- Para que serve o `-p stack-prod`? O que aconteceria sem ele?
+- Qual é o risco de usar o ambiente de desenvolvimento (com volume e portas abertas) em um servidor real?
+
+**10. Limpeza**
+
+```bash
+docker compose down -v
+docker compose -p stack-prod -f docker-compose.yml -f docker-compose.prod.yml down -v
+docker rmi stack-app:prod
+```
+
 ## Exercícios
 
 1. Faça a prática completa e responda às perguntas do passo 9.
@@ -307,6 +528,9 @@ docker compose down -v
 3. Mude a porta publicada do Nginx para `8081` e confirme o resultado com `docker compose ps` e `curl`.
 4. Limite a memória do serviço `app` adicionando `mem_limit: 128m` e confirme o limite com `docker stats --no-stream`.
 5. Desafio: adicione um quarto serviço à stack (por exemplo, um `redis`) e explique, em texto, para que ele poderia servir em uma aplicação real.
+6. Faça a prática dos dois ambientes e responda às perguntas do passo 9.
+7. Acrescente ao ambiente de desenvolvimento um serviço de apoio que não existe em produção (por exemplo, `redis-commander` ou um serviço de e-mail de teste) e confirme que ele não aparece na produção.
+8. Desafio: no arquivo de produção, remova a porta publicada do Nginx e coloque `80:80`. Explique por que isso pode falhar no WSL2 se o Nginx da Unidade 1 estiver rodando, e como descobrir quem está usando a porta (use o `ss` ou o `netstat -natp` que você viu no complemento de redes).
 
 ---
 
