@@ -30,7 +30,7 @@ O link do repositório é enviado ao professor **antes da apresentação**.
 
 ## A aplicação
 
-A aplicação pode ser simples: um CRUD de uma entidade (tarefas, alunos, livros) já basta. **O foco da avaliação é a infraestrutura**, e não a funcionalidade.
+A aplicação deve ser um **CRUD de uma aplicação web**, em **qualquer linguagem** à escolha do trio (por exemplo, tarefas, alunos ou livros). **O foco da avaliação é a infraestrutura**, e não a funcionalidade.
 
 ## Arquitetura mínima
 
@@ -170,14 +170,6 @@ O professor pede a cada integrante que explique uma parte do projeto.
 | Processo, revisão cruzada e entrega pelo GitHub (R8) | 0,5 |
 | Apresentação e domínio técnico | 1,0 |
 | **Total** | **10,0** |
-
-**Níveis de desempenho**, aplicados a cada critério:
-
-| Nível | Descrição |
-|---|---|
-| **Pleno** | Funciona do zero, com boas práticas, e o trio explica as decisões |
-| **Parcial** | Funciona, mas com falhas de prática (imagem `latest`, senha no código, sem teste real) ou com explicação fraca |
-| **Insuficiente** | Não funciona ou depende de ajuste manual |
 
 **Nota individual:** a nota do trio é ajustada pelos commits, pelas revisões feitas e pelas respostas de cada pessoa na apresentação.
 
