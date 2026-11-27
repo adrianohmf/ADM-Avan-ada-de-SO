@@ -51,9 +51,152 @@ jobs:
 - **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
 - **`run`** — executa um comando shell diretamente.
 
-## Comandos e fluxo de trabalho
+## Git e GitHub: o básico para o pipeline
 
-Não há um "comando" para rodar o GitHub Actions localmente — ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. O fluxo de trabalho típico é:
+O GitHub Actions só dispara quando o código chega ao GitHub. Por isso, antes do workflow, é preciso dominar o básico do Git e saber conectar o seu computador à sua conta.
+
+- **Git** é o programa de controle de versão que roda na sua máquina (no WSL2).
+- **GitHub** é o serviço na internet que guarda os repositórios e executa o GitHub Actions.
+
+### Instalar e se identificar
+
+```bash
+sudo apt update && sudo apt install -y git
+git --version
+
+# Identidade que aparece nos seus commits (use o mesmo e-mail da conta do GitHub)
+git config --global user.name "Seu Nome"
+git config --global user.email "seu-email@exemplo.com"
+git config --global init.defaultBranch main
+
+# Conferir
+git config --global --list
+```
+
+### Conectar o WSL2 à sua conta do GitHub
+
+O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal. Há três caminhos. Escolha **um**.
+
+**Opção A: chave SSH (recomendada).** Você cria um par de chaves, entrega a pública ao GitHub e nunca mais digita senha.
+
+```bash
+# 1. Gerar a chave (aceite o local padrão; a frase secreta é opcional, mas recomendada)
+ssh-keygen -t ed25519 -C "seu-email@exemplo.com"
+
+# 2. Mostrar a chave PÚBLICA e copiar todo o texto
+cat ~/.ssh/id_ed25519.pub
+```
+
+3. No GitHub, acesse **Settings, SSH and GPG keys, New SSH key**, dê um nome (por exemplo, "WSL2 notebook") e cole a chave pública.
+4. Teste a conexão:
+
+```bash
+ssh -T git@github.com
+# Esperado: Hi seu-usuario! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
+Com SSH, os repositórios são clonados com o endereço no formato `git@github.com:usuario/repositorio.git`.
+
+> Nunca compartilhe o arquivo `id_ed25519` (a chave **privada**). Só o `.pub` vai para o GitHub.
+
+**Opção B: HTTPS com token de acesso pessoal (PAT).** O token faz o papel da senha.
+
+1. No GitHub, acesse **Settings, Developer settings, Personal access tokens, Fine-grained tokens, Generate new token**.
+2. Escolha o repositório, a validade e a permissão **Contents: Read and write**.
+3. Copie o token (ele só aparece uma vez).
+4. Ao fazer `git push` por HTTPS, informe o seu **usuário** e use o **token no lugar da senha**. Para não digitar sempre:
+
+```bash
+git config --global credential.helper store   # guarda em texto puro no seu home; use só no seu computador
+```
+
+**Opção C: GitHub CLI (`gh`).** Faz o login pelo navegador e configura as credenciais sozinho.
+
+```bash
+sudo apt install -y gh
+gh auth login
+# Escolha: GitHub.com, o protocolo (SSH ou HTTPS) e "Login with a web browser"
+gh auth status
+```
+
+> **Segurança:** token, chave privada e `.env` **nunca** entram em um commit. Se um token vazar, revogue-o imediatamente em Settings.
+
+### Comandos básicos do Git
+
+| Comando | O que faz |
+|---|---|
+| `git init` | Cria um repositório novo na pasta atual |
+| `git clone <url>` | Copia um repositório do GitHub para a sua máquina |
+| `git status` | Mostra o que mudou e o que está pronto para o commit |
+| `git add <arquivo>` | Coloca a alteração na área de preparação (`git add .` adiciona tudo) |
+| `git commit -m "mensagem"` | Registra as alterações preparadas como uma versão |
+| `git log --oneline` | Lista o histórico de commits de forma resumida |
+| `git diff` | Mostra as linhas alteradas ainda não preparadas |
+| `git remote -v` | Mostra para onde o repositório envia e de onde recebe |
+| `git push` | Envia seus commits ao GitHub |
+| `git pull` | Traz do GitHub os commits novos e junta ao seu código |
+| `git branch` | Lista as branches (ramos de trabalho) |
+| `git switch -c <nome>` | Cria uma branch nova e muda para ela |
+| `git switch <nome>` | Muda para uma branch existente |
+| `git merge <nome>` | Junta a branch indicada na branch atual |
+
+### Primeiro repositório, do zero ao GitHub
+
+1. No GitHub, clique em **New repository**, dê um nome (por exemplo, `meu-projeto-ci`) e crie **sem** README.
+2. No terminal:
+
+```bash
+mkdir ~/meu-projeto-ci && cd ~/meu-projeto-ci
+git init
+echo "# Meu projeto CI" > README.md
+
+# Arquivos que nunca devem ir para o Git
+printf ".env\n__pycache__/\nnode_modules/\n" > .gitignore
+
+git add .
+git commit -m "Primeiro commit"
+
+# Conectar ao repositório criado (use a URL SSH ou HTTPS, conforme a opção escolhida)
+git remote add origin git@github.com:SEU-USUARIO/meu-projeto-ci.git
+git branch -M main
+git push -u origin main
+```
+
+Atualize a página do repositório no GitHub e confira se os arquivos apareceram.
+
+### Fluxo com branch e pull request
+
+É o fluxo usado em equipe, e o que o projeto final exige (revisão cruzada):
+
+```bash
+git pull                              # começa atualizado
+git switch -c ajusta-readme           # trabalha em uma branch própria
+# ... edite os arquivos ...
+git add .
+git commit -m "Ajusta o README"
+git push -u origin ajusta-readme      # envia a branch
+```
+
+No GitHub, aparece o botão **Compare & pull request**. Abra o PR, peça a revisão de outra pessoa e faça o **merge**. Depois, volte para a `main` e atualize:
+
+```bash
+git switch main
+git pull
+```
+
+### Problemas comuns
+
+| Mensagem | Causa e solução |
+|---|---|
+| `Permission denied (publickey)` | A chave pública não foi adicionada ao GitHub, ou a URL do remote é SSH sem chave configurada. Refaça a Opção A e teste com `ssh -T git@github.com` |
+| `Authentication failed` (HTTPS) | Você usou a senha da conta. Use o token (Opção B) |
+| `rejected ... fetch first` | Há commits no GitHub que você não tem. Rode `git pull` e tente o `push` de novo |
+| `Author identity unknown` | Faltou configurar `user.name` e `user.email` |
+| `fatal: not a git repository` | Você não está dentro da pasta do repositório. Use `cd` |
+
+## Do commit ao workflow
+
+Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
 
 ```bash
 # 1. Crie a pasta e o arquivo de workflow no seu projeto
@@ -70,10 +213,12 @@ Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompa
 
 ## Exercícios
 
-1. Crie um repositório no GitHub com o projeto da Semana 10 (ou 12) e adicione um workflow simples que só imprime uma mensagem (`run: echo "Rodando CI"`).
-2. Adicione um step que instale as dependências do seu projeto e rode algum tipo de verificação (pode ser um teste simples, ou até um `python3 -m py_compile` validando a sintaxe do código).
-3. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
-4. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
+1. Configure o Git no WSL2 (`user.name` e `user.email`), conecte à sua conta do GitHub por SSH, token ou `gh`, e prove que funcionou com `ssh -T git@github.com` ou `gh auth status`.
+2. Crie um repositório no GitHub com o projeto da Semana 10 (ou 12) e adicione um workflow simples que só imprime uma mensagem (`run: echo "Rodando CI"`).
+3. Adicione um step que instale as dependências do seu projeto e rode algum tipo de verificação (pode ser um teste simples, ou até um `python3 -m py_compile` validando a sintaxe do código).
+4. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
+5. Crie uma branch, altere o README e abra um pull request pelo GitHub. Observe o workflow rodando no PR antes do merge.
+6. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
 
 ---
 
