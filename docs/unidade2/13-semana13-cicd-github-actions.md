@@ -161,73 +161,6 @@ git switch main
 git pull
 ```
 
-## Teoria
-
-**CI/CD** significa **Integração Contínua** (Continuous Integration) e **Entrega/Implantação Contínua** (Continuous Delivery/Deployment):
-
-- **Integração Contínua**: toda vez que um código é enviado ao repositório, ele é automaticamente construído e testado — detectando problemas cedo, antes de chegarem a produção.
-- **Entrega/Implantação Contínua**: o processo de levar essa mudança, já validada, até o ambiente de produção — de forma automatizada, em vez de manual.
-
-![Pipeline de CI/CD](../../images/cicd_pipeline.png)
-
-O **GitHub Actions** é a ferramenta de CI/CD integrada ao GitHub. Um workflow é definido em um arquivo YAML dentro de `.github/workflows/`, e é disparado por eventos do repositório (um `push`, um `pull request`, etc.).
-
-## Estrutura de um workflow
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  build-e-testes:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Baixar o código do repositório
-        uses: actions/checkout@v4
-
-      - name: Configurar o Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Instalar dependências
-        run: pip install -r requirements.txt
-
-      - name: Rodar os testes
-        run: pytest
-```
-
-- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
-- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
-- **`steps`** — a sequência de passos de um job, executados em ordem.
-- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
-- **`run`** — executa um comando shell diretamente.
-
-## Do commit ao workflow
-
-Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
-
-```bash
-# 1. Crie a pasta e o arquivo de workflow no seu projeto
-mkdir .github\workflows
-# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
-code .github/workflows/ci.yml
-
-# 2. Adicione, faça commit e envie para o GitHub
-git add .github/workflows/ci.yml
-git commit -m "Adiciona pipeline de CI"
-git push
-```
-
-Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
-
 ## Publicando uma página com GitHub Pages
 
 O **GitHub Pages** publica páginas estáticas (HTML, CSS e JavaScript) direto de um repositório, em um endereço como `https://seu-usuario.github.io/nome-do-repositorio/`. Nas contas gratuitas, funciona em repositórios públicos.
@@ -330,6 +263,73 @@ Pontos para observar:
 - **`permissions`**: o workflow precisa de permissão para escrever no Pages. Sem isso, o deploy falha.
 - **`path: site`**: só o conteúdo dessa pasta é publicado, e não o repositório inteiro.
 - **`environment`**: registra cada publicação na aba **Deployments** do repositório.
+
+## Teoria
+
+**CI/CD** significa **Integração Contínua** (Continuous Integration) e **Entrega/Implantação Contínua** (Continuous Delivery/Deployment):
+
+- **Integração Contínua**: toda vez que um código é enviado ao repositório, ele é automaticamente construído e testado — detectando problemas cedo, antes de chegarem a produção.
+- **Entrega/Implantação Contínua**: o processo de levar essa mudança, já validada, até o ambiente de produção — de forma automatizada, em vez de manual.
+
+![Pipeline de CI/CD](../../images/cicd_pipeline.png)
+
+O **GitHub Actions** é a ferramenta de CI/CD integrada ao GitHub. Um workflow é definido em um arquivo YAML dentro de `.github/workflows/`, e é disparado por eventos do repositório (um `push`, um `pull request`, etc.).
+
+## Estrutura de um workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar os testes
+        run: pytest
+```
+
+- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
+- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
+- **`steps`** — a sequência de passos de um job, executados em ordem.
+- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
+- **`run`** — executa um comando shell diretamente.
+
+## Do commit ao workflow
+
+Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
+
+```bash
+# 1. Crie a pasta e o arquivo de workflow no seu projeto
+mkdir .github\workflows
+# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
+code .github/workflows/ci.yml
+
+# 2. Adicione, faça commit e envie para o GitHub
+git add .github/workflows/ci.yml
+git commit -m "Adiciona pipeline de CI"
+git push
+```
+
+Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
 
 ## Alternativas ao GitHub Actions
 
