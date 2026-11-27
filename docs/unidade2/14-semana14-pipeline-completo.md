@@ -51,7 +51,7 @@ A partir desta semana, começa o **projeto final da disciplina**, feito em **tri
 
 O projeto é entregue **pelo GitHub** e vale **10 pontos**. Todos os requisitos, o que deve ter no `README.md` e a avaliação estão em [Projeto Final](15-projeto-final.md).
 
-**Datas:** acompanhamento em **04/12** e apresentação em **11/12**.
+**Datas:** acompanhamento em **04/12** e apresentação em **13/12**.
 
 ## Exercícios
 

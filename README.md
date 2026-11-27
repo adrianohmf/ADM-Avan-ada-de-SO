@@ -7,7 +7,7 @@
 ## Como o material está organizado
 
 - **Unidade 1 (Semanas 1 a 9):** Fundamentos, Linux + servidor web. A Semana 9 é o seminário avaliativo.
-- **Unidade 2 (Semanas 10 a 18):** Docker + CI/CD com GitHub Actions, projeto final em trios (acompanhamento em 04/12) e apresentação em 11/12.
+- **Unidade 2 (Semanas 10 a 18):** Docker + CI/CD com GitHub Actions, projeto final em trios (acompanhamento em 04/12) e apresentação em 13/12.
 - Cada assunto está em um arquivo próprio dentro da pasta `docs/`, e as imagens ficam em `images/`.
 - A Unidade 2 dá continuidade à mesma aplicação configurada manualmente na Unidade 1.
 

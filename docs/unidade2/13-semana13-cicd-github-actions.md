@@ -449,7 +449,91 @@ git push
 
 Na aba **Actions**, acompanhe o workflow. Para ver o pipeline falhar, troque o texto do `grep` por uma frase que não existe na página e envie de novo.
 
-> Este pipeline constrói e testa a imagem, mas **não coloca a página no ar** para o público. Para isso, é preciso enviar a imagem ao GHCR e rodá-la em um servidor, que é exatamente o que o projeto final pede.
+> Este pipeline constrói e testa a imagem, mas **não coloca a página no ar**. A máquina do workflow é temporária e é descartada quando o job termina, levando junto a imagem e o container. A seguir, a imagem passa a ser guardada no GitHub.
+
+### Enviando a imagem ao GHCR
+
+O **GHCR** (GitHub Container Registry, em `ghcr.io`) é o registro de imagens do GitHub, equivalente ao Docker Hub. Guardar a imagem ali permite baixá-la depois em qualquer máquina com Docker.
+
+Substitua o conteúdo do `.github/workflows/docker.yml` por esta versão, que testa a imagem e, se o teste passar, a envia ao GHCR:
+
+```yaml
+name: Build, teste e publicação da imagem
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGEM: ghcr.io/${{ github.repository_owner }}/minha-pagina
+
+jobs:
+  build-e-teste:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Construir a imagem
+        run: docker build -t $IMAGEM:${{ github.sha }} -t $IMAGEM:latest .
+
+      - name: Subir o container
+        run: docker run -d --name pagina -p 8080:80 $IMAGEM:${{ github.sha }}
+
+      - name: Testar a página
+        run: |
+          sleep 3
+          curl --fail --silent http://localhost:8080 | grep "Olá, GitHub Pages!"
+
+      - name: Mostrar os logs se algo falhou
+        if: failure()
+        run: docker logs pagina
+
+      - name: Entrar no GHCR
+        if: github.ref == 'refs/heads/main'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Enviar a imagem ao GHCR
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push $IMAGEM:${{ github.sha }}
+          docker push $IMAGEM:latest
+```
+
+O que mudou em relação ao workflow anterior:
+
+- **`packages: write`**: dá ao workflow permissão para gravar no GHCR.
+- **`IMAGEM`**: nome completo da imagem, no formato `ghcr.io/usuario/nome`. O `github.repository_owner` preenche o seu usuário. O nome precisa estar em **minúsculas**; com letras maiúsculas, o envio falha.
+- **Duas tags**: `${{ github.sha }}` identifica cada versão exata, e `latest` aponta para a mais recente.
+- **`GITHUB_TOKEN`**: token criado automaticamente pelo GitHub a cada execução. Você não cria nem guarda nenhum segredo.
+- **`if: github.ref == 'refs/heads/main'`**: o login e o envio só acontecem em `push` na `main`. Em pull requests, o pipeline constrói e testa, mas não publica.
+- **Ordem**: o envio vem **depois** do teste. Se o `curl` falhar, a imagem quebrada não vai para o GHCR.
+
+Envie as alterações:
+
+```powershell
+git add .
+git commit -m "Publica a imagem no GHCR"
+git push
+```
+
+Depois do pipeline verde, abra a página inicial do repositório: na coluna da direita, a seção **Packages** mostra `minha-pagina`. Em qualquer máquina com Docker, a imagem pode ser baixada e executada:
+
+```powershell
+docker pull ghcr.io/SEU-USUARIO/minha-pagina:latest
+docker run -d -p 8080:80 ghcr.io/SEU-USUARIO/minha-pagina:latest
+```
+
+> Por padrão, a imagem nasce **privada**. Para baixar sem login, abra o pacote, entre em **Package settings** e, em **Danger Zone**, mude a visibilidade para **Public**. Se ficar privada, o `docker pull` exige antes um `docker login ghcr.io` com um token pessoal com a permissão `read:packages`.
+
+Falta apenas rodar essa imagem em um **servidor que fique ligado** (uma VM na nuvem ou um PaaS), executando `docker compose pull` e `up -d`. Esse passo final é o deploy, e é exatamente o que o projeto final pede.
 
 ## Alternativas ao GitHub Actions
 
@@ -479,7 +563,8 @@ Para escolher, vale considerar onde o código já está hospedado, se a ferramen
 5. Crie uma branch, altere o README e abra um pull request pelo GitHub. Observe o workflow rodando no PR antes do merge.
 6. Crie uma página `index.html` simples, publique com o GitHub Pages pela forma simples e depois automatize o deploy com `actions/deploy-pages`. Altere o HTML, faça o `push` e veja a página atualizar sozinha.
 7. Crie o `Dockerfile` da página, rode o container com `docker run` e crie o workflow `docker.yml`. Faça o teste com `curl` falhar de propósito e depois corrija.
-8. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
+8. Altere o `docker.yml` para enviar a imagem ao GHCR, confira o pacote na seção **Packages** do repositório e baixe a imagem com `docker pull`.
+9. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
 
 ---
 

@@ -13,7 +13,7 @@
 | Data | O que acontece |
 |---|---|
 | **04/12** | Acompanhamento do projeto |
-| **11/12** | Apresentação final |
+| **13/12** | Apresentação final |
 
 ## Entrega pelo GitHub
 
@@ -146,7 +146,7 @@ O repositório deve ter, na raiz, um `README.md` que explique o projeto por comp
 - Os 3 integrantes com commits no repositório.
 - Pull requests com **revisão cruzada**: cada PR é aprovado por outra pessoa do trio. No mínimo 5 PRs mergeados.
 
-## Apresentação (11/12)
+## Apresentação (13/12)
 
 Demonstração ao vivo e perguntas. O trio deve:
 

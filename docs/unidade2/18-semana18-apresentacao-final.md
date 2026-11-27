@@ -4,7 +4,7 @@
 
 Cada trio apresenta o projeto desenvolvido ao longo da Unidade 2. A descrição completa do projeto, os requisitos e a avaliação (10 pontos) estão em [Projeto Final](15-projeto-final.md).
 
-**Data da apresentação: 11/12.**
+**Data da apresentação: 13/12.**
 
 ## Roteiro da demonstração
 
