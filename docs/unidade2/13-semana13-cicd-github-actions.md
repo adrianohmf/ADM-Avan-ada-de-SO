@@ -331,6 +331,91 @@ git push
 
 Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
 
+## A mesma página em um container
+
+O GitHub Pages hospeda a página para você. Com Docker, **você** empacota a página junto com o servidor web e a executa onde quiser. O `index.html` é o mesmo da seção anterior, guardado na pasta `site/`. O que muda é quem serve o arquivo: um container com **Nginx**.
+
+Na raiz do repositório, crie o arquivo `Dockerfile`:
+
+```dockerfile
+FROM nginx:1.27-alpine
+COPY site/ /usr/share/nginx/html/
+```
+
+- **`FROM`**: parte de uma imagem pronta do Nginx, com versão fixada.
+- **`COPY`**: copia o conteúdo de `site/` para a pasta que o Nginx publica.
+
+> Para rodar o Docker no terminal do VS Code no Windows, é preciso ter o Docker Desktop instalado e aberto. Se preferir, esta parte local pode ser feita no terminal do WSL2, como nas semanas anteriores. O workflow abaixo roda nos servidores do GitHub e não depende do Docker da sua máquina.
+
+Para testar localmente:
+
+```powershell
+docker build -t minha-pagina .
+docker run -d -p 8080:80 --name pagina minha-pagina
+```
+
+Abra `http://localhost:8080` no navegador. Para encerrar e remover o container:
+
+```powershell
+docker rm -f pagina
+```
+
+### Testando a imagem no pipeline
+
+Agora o pipeline passa a fazer o que o GitHub Pages não faz: **construir a imagem, subir o container e verificar se a página responde**. Crie o arquivo `.github/workflows/docker.yml`:
+
+```yaml
+name: Build e teste da imagem
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-e-teste:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Construir a imagem
+        run: docker build -t minha-pagina:${{ github.sha }} .
+
+      - name: Subir o container
+        run: docker run -d --name pagina -p 8080:80 minha-pagina:${{ github.sha }}
+
+      - name: Testar a página
+        run: |
+          sleep 3
+          curl --fail --silent http://localhost:8080 | grep "Olá, GitHub Pages!"
+
+      - name: Mostrar os logs se algo falhou
+        if: failure()
+        run: docker logs pagina
+```
+
+O que cada parte faz:
+
+- **`github.sha`**: identificador do commit, usado como tag da imagem. Cada versão fica identificável.
+- **`curl --fail`**: faz o comando falhar se o servidor devolver erro (por exemplo, 404). Sem isso, o passo ficaria verde mesmo com a página quebrada.
+- **`grep`**: confere se o texto esperado está na página. Se não estiver, o passo falha e o pipeline fica vermelho.
+- **`if: failure()`**: este passo só roda quando algum passo anterior falhou, e mostra os logs do container para ajudar a achar o erro.
+
+Envie as alterações:
+
+```powershell
+git add .
+git commit -m "Adiciona Dockerfile e workflow da imagem"
+git push
+```
+
+Na aba **Actions**, acompanhe o workflow. Para ver o pipeline falhar, troque o texto do `grep` por uma frase que não existe na página e envie de novo.
+
+> Este pipeline constrói e testa a imagem, mas **não coloca a página no ar** para o público. Para isso, é preciso enviar a imagem ao GHCR e rodá-la em um servidor, que é exatamente o que o projeto final pede.
+
 ## Alternativas ao GitHub Actions
 
 O GitHub Actions é uma entre várias ferramentas de CI/CD. Os conceitos (pipeline, jobs, etapas, gatilhos) são os mesmos, mudando a sintaxe e onde o pipeline roda.
@@ -358,7 +443,8 @@ Para escolher, vale considerar onde o código já está hospedado, se a ferramen
 4. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
 5. Crie uma branch, altere o README e abra um pull request pelo GitHub. Observe o workflow rodando no PR antes do merge.
 6. Crie uma página `index.html` simples, publique com o GitHub Pages pela forma simples e depois automatize o deploy com `actions/deploy-pages`. Altere o HTML, faça o `push` e veja a página atualizar sozinha.
-7. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
+7. Crie o `Dockerfile` da página, rode o container com `docker run` e crie o workflow `docker.yml`. Faça o teste com `curl` falhar de propósito e depois corrija.
+8. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
 
 ---
 
