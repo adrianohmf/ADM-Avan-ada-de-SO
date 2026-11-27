@@ -315,7 +315,15 @@ jobs:
         uses: actions/deploy-pages@v4
 ```
 
-3. Faça `git add`, `git commit` e `git push`. Na aba **Actions**, acompanhe a execução. Ao final, o endereço publicado aparece no job `deploy`.
+3. Envie as alterações:
+
+   ```powershell
+   git add .
+   git commit -m "Publica a pagina com GitHub Actions"
+   git push
+   ```
+
+   Na aba **Actions**, acompanhe a execução. Ao final, o endereço publicado aparece no job `deploy`.
 
 Pontos para observar:
 
