@@ -51,7 +51,7 @@ cat ~/.ssh/id_ed25519.pub
 4. Teste a conexão:
 
 ```bash
-ssh -T git@github.com
+ssh -T -p 443 git@ssh.github.com
 # Esperado: Hi seu-usuario! You've successfully authenticated, but GitHub does not provide shell access.
 ```
 
