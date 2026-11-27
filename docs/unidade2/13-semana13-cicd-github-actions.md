@@ -198,6 +198,91 @@ git push
 
 Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
 
+## Publicando uma página com GitHub Pages
+
+O **GitHub Pages** publica páginas estáticas (HTML, CSS e JavaScript) direto de um repositório, em um endereço como `https://seu-usuario.github.io/nome-do-repositorio/`. Nas contas gratuitas, funciona em repositórios públicos.
+
+**Forma simples, sem workflow:**
+
+1. Coloque um `index.html` na raiz do repositório e envie para o `main`.
+2. No GitHub, acesse **Settings, Pages**.
+3. Em **Build and deployment**, escolha **Deploy from a branch**, selecione a branch `main` e a pasta `/ (root)` e clique em **Save**.
+4. Em um ou dois minutos, o endereço da página aparece nessa tela.
+
+### Automatizando o deploy com GitHub Actions
+
+Dá ainda para automatizar o deploy com um workflow do GitHub Actions (`actions/deploy-pages`), o que combina com o tema da semana: a cada `push` no `main`, o pipeline publica a página sozinho.
+
+1. Em **Settings, Pages**, na opção **Source**, escolha **GitHub Actions**.
+2. Crie a pasta `site/` com o seu `index.html` e o arquivo `.github/workflows/pages.yml`:
+
+```yaml
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar o Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar a pasta site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+3. Faça `git add`, `git commit` e `git push`. Na aba **Actions**, acompanhe a execução. Ao final, o endereço publicado aparece no job `deploy`.
+
+Pontos para observar:
+
+- **`permissions`**: o workflow precisa de permissão para escrever no Pages. Sem isso, o deploy falha.
+- **`path: site`**: só o conteúdo dessa pasta é publicado, e não o repositório inteiro.
+- **`environment`**: registra cada publicação na aba **Deployments** do repositório.
+
+## Alternativas ao GitHub Actions
+
+O GitHub Actions é uma entre várias ferramentas de CI/CD. Os conceitos (pipeline, jobs, etapas, gatilhos) são os mesmos, mudando a sintaxe e onde o pipeline roda.
+
+| Ferramenta | Característica principal |
+|---|---|
+| **GitLab CI/CD** | Integrada ao GitLab, com pipeline definido em `.gitlab-ci.yml`. Pode ser usada na nuvem ou instalada em servidor próprio |
+| **Jenkins** | Software livre que você instala e administra. Muito usado em empresas, com milhares de plugins |
+| **CircleCI** | Serviço na nuvem focado em velocidade, com configuração em `.circleci/config.yml` |
+| **Azure Pipelines** | CI/CD do Azure DevOps, com forte integração ao ecossistema Microsoft |
+| **Bitbucket Pipelines** | Integrado ao Bitbucket, com configuração em `bitbucket-pipelines.yml` |
+| **Travis CI** | Um dos primeiros serviços de CI na nuvem, hoje menos usado que os demais |
+| **Gitea Actions e Forgejo Actions** | Alternativas de código aberto para hospedagem própria, com sintaxe muito parecida com a do GitHub Actions |
+| **Drone e Woodpecker CI** | Ferramentas leves de código aberto, em que cada etapa do pipeline roda em um container |
+| **AWS CodePipeline e Google Cloud Build** | Serviços de CI/CD das nuvens da AWS e do Google, integrados aos demais serviços de cada provedor |
+| **Argo CD** | Focado só na entrega (CD), muito usado com Kubernetes |
+
+Para escolher, vale considerar onde o código já está hospedado, se a ferramenta é na nuvem ou instalada por você, o custo e o suporte da comunidade.
+
 ## Exercícios
 
 1. Configure o Git no WSL2 (`user.name` e `user.email`), conecte à sua conta do GitHub por SSH, token ou `gh`, e prove que funcionou com `ssh -T git@github.com` ou `gh auth status`.
@@ -205,7 +290,8 @@ Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompa
 3. Adicione um step que instale as dependências do seu projeto e rode algum tipo de verificação (pode ser um teste simples, ou até um `python3 -m py_compile` validando a sintaxe do código).
 4. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
 5. Crie uma branch, altere o README e abra um pull request pelo GitHub. Observe o workflow rodando no PR antes do merge.
-6. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
+6. Crie uma página `index.html` simples, publique com o GitHub Pages pela forma simples e depois automatize o deploy com `actions/deploy-pages`. Altere o HTML, faça o `push` e veja a página atualizar sozinha.
+7. Desafio: configure o workflow para rodar também quando um `pull request` for aberto, e explique, em texto, por que isso é uma boa prática em equipes.
 
 ---
 
