@@ -6,13 +6,22 @@
 
 O GitHub Actions só dispara quando o código chega ao GitHub. Por isso, antes do workflow, é preciso dominar o básico do Git e saber conectar o seu computador à sua conta.
 
-- **Git** é o programa de controle de versão que roda na sua máquina (no WSL2).
+- **Git** é o programa de controle de versão que roda na sua máquina.
 - **GitHub** é o serviço na internet que guarda os repositórios e executa o GitHub Actions.
+
+> **Nesta semana, não use o WSL2.** Faça tudo direto na sua máquina (a máquina hospedeira). Os exemplos abaixo supõem **Windows**; em macOS e Linux, os comandos do Git são os mesmos.
 
 ### Instalar e se identificar
 
+No Windows, instale o **Git for Windows** (https://git-scm.com/download/win) ou use o terminal:
+
+```powershell
+winget install --id Git.Git -e
+```
+
+Feche e abra o terminal de novo. Os comandos desta semana funcionam no **Git Bash** (instalado junto com o Git) e, em sua maioria, no PowerShell. Onde houver diferença, o texto avisa.
+
 ```bash
-sudo apt update && sudo apt install -y git
 git --version
 
 # Identidade que aparece nos seus commits (use o mesmo e-mail da conta do GitHub)
@@ -24,7 +33,7 @@ git config --global init.defaultBranch main
 git config --global --list
 ```
 
-### Conectar o WSL2 à sua conta do GitHub
+### Conectar o seu computador à sua conta do GitHub
 
 O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal. Há três caminhos. Escolha **um**.
 
@@ -35,10 +44,13 @@ O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal
 ssh-keygen -t ed25519 -C "seu-email@exemplo.com"
 
 # 2. Mostrar a chave PÚBLICA e copiar todo o texto
+# (Git Bash)
 cat ~/.ssh/id_ed25519.pub
+# (PowerShell)
+type $env:USERPROFILE\.ssh\id_ed25519.pub
 ```
 
-3. No GitHub, acesse **Settings, SSH and GPG keys, New SSH key**, dê um nome (por exemplo, "WSL2 notebook") e cole a chave pública.
+3. No GitHub, acesse **Settings, SSH and GPG keys, New SSH key**, dê um nome (por exemplo, "Notebook pessoal") e cole a chave pública.
 4. Teste a conexão:
 
 ```bash
@@ -58,13 +70,14 @@ Com SSH, os repositórios são clonados com o endereço no formato `git@github.c
 4. Ao fazer `git push` por HTTPS, informe o seu **usuário** e use o **token no lugar da senha**. Para não digitar sempre:
 
 ```bash
-git config --global credential.helper store   # guarda em texto puro no seu home; use só no seu computador
+# No Windows, o Git for Windows já inclui o Git Credential Manager: na primeira vez ele pede o login
+# e guarda o token com segurança no cofre do Windows. Nada a configurar.
 ```
 
 **Opção C: GitHub CLI (`gh`).** Faz o login pelo navegador e configura as credenciais sozinho.
 
 ```bash
-sudo apt install -y gh
+winget install --id GitHub.cli -e   # Windows (feche e abra o terminal depois)
 gh auth login
 # Escolha: GitHub.com, o protocolo (SSH ou HTTPS) e "Login with a web browser"
 gh auth status
@@ -97,7 +110,7 @@ gh auth status
 2. No terminal:
 
 ```bash
-mkdir ~/meu-projeto-ci && cd ~/meu-projeto-ci
+mkdir meu-projeto-ci && cd meu-projeto-ci
 git init
 echo "# Meu projeto CI" > README.md
 
@@ -188,7 +201,8 @@ Não há um "comando" para rodar o GitHub Actions localmente: ele roda automatic
 ```bash
 # 1. Crie a pasta e o arquivo de workflow no seu projeto
 mkdir -p .github/workflows
-nano .github/workflows/ci.yml
+# crie e edite o arquivo ci.yml no VS Code ou no Bloco de Notas
+code .github/workflows/ci.yml
 
 # 2. Adicione, faça commit e envie para o GitHub
 git add .github/workflows/ci.yml
@@ -285,7 +299,7 @@ Para escolher, vale considerar onde o código já está hospedado, se a ferramen
 
 ## Exercícios
 
-1. Configure o Git no WSL2 (`user.name` e `user.email`), conecte à sua conta do GitHub por SSH, token ou `gh`, e prove que funcionou com `ssh -T git@github.com` ou `gh auth status`.
+1. Instale e configure o Git na sua máquina (`user.name` e `user.email`), conecte à sua conta do GitHub por SSH, token ou `gh`, e prove que funcionou com `ssh -T git@github.com` ou `gh auth status`.
 2. Crie um repositório no GitHub com o projeto da Semana 10 (ou 12) e adicione um workflow simples que só imprime uma mensagem (`run: echo "Rodando CI"`).
 3. Adicione um step que instale as dependências do seu projeto e rode algum tipo de verificação (pode ser um teste simples, ou até um `python3 -m py_compile` validando a sintaxe do código).
 4. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
