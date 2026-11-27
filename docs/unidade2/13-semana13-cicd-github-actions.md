@@ -35,7 +35,7 @@ git config --global --list
 
 ### Conectar o seu computador à sua conta do GitHub
 
-O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal. Há três caminhos. Escolha **um**.
+O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal. Há quatro caminhos. Escolha **um**.
 
 **Opção A: chave SSH (recomendada).** Você cria um par de chaves, entrega a pública ao GitHub e nunca mais digita senha.
 
@@ -79,6 +79,19 @@ gh auth login
 # Escolha: GitHub.com, o protocolo (SSH ou HTTPS) e "Login with a web browser"
 gh auth status
 ```
+
+**Opção D: entrar com a conta do GitHub pelo VS Code.** Como você vai usar o terminal do VS Code, esta é a forma mais direta: o login é feito pelo navegador, sem criar chave nem token à mão.
+
+1. No VS Code, clique no ícone de **Contas** (o bonequinho, no canto inferior esquerdo) e escolha **Sign in with GitHub** (ou **Turn on Backup and Sync / Sign in to Sync Settings**, que também pede a conta).
+2. O navegador abre na página do GitHub. Entre com o seu usuário, clique em **Authorize Visual Studio Code** e, quando o navegador pedir, permita abrir o VS Code.
+3. De volta ao VS Code, o ícone de Contas passa a mostrar o seu usuário do GitHub.
+4. Use um repositório com endereço **HTTPS** (`https://github.com/SEU-USUARIO/meu-projeto-ci.git`), e não o endereço SSH. Na primeira vez que você rodar `git push`, `git pull` ou `git clone` no terminal do VS Code, ele abre uma janela pedindo para entrar com o GitHub. Escolha **Allow** e confirme no navegador.
+
+Também dá para clonar sem digitar comando: abra a paleta (`Ctrl + Shift + P`), execute **Git: Clone**, escolha **Clone from GitHub** e selecione o repositório da lista.
+
+Para abrir e revisar pull requests dentro do próprio editor, instale a extensão **GitHub Pull Requests** (da Microsoft e do GitHub).
+
+> A autenticação do VS Code vale só para o VS Code. Se você abrir um terminal fora dele (por exemplo, o PowerShell do Windows), o `git push` volta a pedir login pelas outras opções.
 
 > **Segurança:** token, chave privada e `.env` **nunca** entram em um commit. Se um token vazar, revogue-o imediatamente em Settings.
 
@@ -298,7 +311,7 @@ Para escolher, vale considerar onde o código já está hospedado, se a ferramen
 
 ## Exercícios
 
-1. Instale e configure o Git na sua máquina (`user.name` e `user.email`), conecte à sua conta do GitHub por SSH, token ou `gh`, e prove que funcionou com `ssh -T git@github.com` ou `gh auth status`.
+1. Instale e configure o Git na sua máquina (`user.name` e `user.email`), conecte à sua conta do GitHub (por SSH, token, `gh` ou pelo login do VS Code) e prove que funcionou enviando um commit com `git push`.
 2. Crie um repositório no GitHub com o projeto da Semana 10 (ou 12) e adicione um workflow simples que só imprime uma mensagem (`run: echo "Rodando CI"`).
 3. Adicione um step que instale as dependências do seu projeto e rode algum tipo de verificação (pode ser um teste simples, ou até um `python3 -m py_compile` validando a sintaxe do código).
 4. Faça o workflow falhar de propósito (ex.: um comando inexistente) e observe, na aba Actions do GitHub, como o erro é reportado.
