@@ -214,6 +214,8 @@ O **GitHub Actions** é a ferramenta de CI/CD integrada ao GitHub. Um workflow �
 
 ## Estrutura de um workflow
 
+Este primeiro workflow funciona em **qualquer repositório**, porque não depende de linguagem nem de bibliotecas:
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI
@@ -222,6 +224,39 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Mostrar os arquivos do projeto
+        run: ls -la
+
+      - name: Verificar se o README existe
+        run: test -f README.md
+
+      - name: Mensagem final
+        run: echo "Rodando CI"
+```
+
+- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
+- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
+- **`steps`** — a sequência de passos de um job, executados em ordem.
+- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
+- **`run`** — executa um comando shell diretamente.
+
+Quando o projeto tem código e testes, o workflow passa a construir e testar de verdade. Este é um exemplo para um projeto **Python**, que só funciona se o repositório tiver um `requirements.txt` e testes para o `pytest`:
+
+```yaml
+name: CI Python
+
+on:
+  push:
     branches: [main]
 
 jobs:
@@ -244,11 +279,7 @@ jobs:
         run: pytest
 ```
 
-- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
-- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
-- **`steps`** — a sequência de passos de um job, executados em ordem.
-- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
-- **`run`** — executa um comando shell diretamente.
+> Sem o `requirements.txt`, o passo **Instalar dependências** falha com `No such file or directory: 'requirements.txt'`, e os passos seguintes são pulados.
 
 ## Do commit ao workflow
 
@@ -257,7 +288,7 @@ Não há um "comando" para rodar o GitHub Actions localmente: ele roda automatic
 ```bash
 # 1. Crie a pasta e o arquivo de workflow no seu projeto
 mkdir .github\workflows
-# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
+# abre o arquivo ci.yml no VS Code: copie para ele o primeiro exemplo da seção "Estrutura de um workflow" e salve
 code .github/workflows/ci.yml
 
 # 2. Adicione, faça commit e envie para o GitHub
