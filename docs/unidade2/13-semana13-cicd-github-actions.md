@@ -234,7 +234,36 @@ O **GitHub Pages** publica páginas estáticas (HTML, CSS e JavaScript) direto d
 
 **Forma simples, sem workflow:**
 
-1. Coloque um `index.html` na raiz do repositório e envie para o `main`.
+1. Crie um arquivo `index.html` na raiz do repositório (no VS Code, **New File**), com o conteúdo abaixo:
+
+   ```html
+   <!DOCTYPE html>
+   <html lang="pt-BR">
+   <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Minha primeira página no GitHub Pages</title>
+     <style>
+       body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; text-align: center; }
+       h1 { color: #2F9E41; }
+     </style>
+   </head>
+   <body>
+     <h1>Olá, GitHub Pages!</h1>
+     <p>Esta página foi publicada a partir de um repositório Git.</p>
+   </body>
+   </html>
+   ```
+
+   Depois, envie para o `main` pelo terminal do VS Code:
+
+   ```powershell
+   git add index.html
+   git commit -m "Adiciona index.html"
+   git push
+   ```
+
+   Confira no GitHub se o arquivo apareceu na lista de arquivos do repositório.
 2. No GitHub, acesse **Settings, Pages**.
 3. Em **Build and deployment**, escolha **Deploy from a branch**, selecione a branch `main` e a pasta `/ (root)` e clique em **Save**.
 4. Em um ou dois minutos, o endereço da página aparece nessa tela.
@@ -244,7 +273,7 @@ O **GitHub Pages** publica páginas estáticas (HTML, CSS e JavaScript) direto d
 Dá ainda para automatizar o deploy com um workflow do GitHub Actions (`actions/deploy-pages`), o que combina com o tema da semana: a cada `push` no `main`, o pipeline publica a página sozinho.
 
 1. Em **Settings, Pages**, na opção **Source**, escolha **GitHub Actions**.
-2. Crie a pasta `site/` com o seu `index.html` e o arquivo `.github/workflows/pages.yml`:
+2. Crie a pasta `site/` e mova o `index.html` para dentro dela (`mkdir site` e `git mv index.html site/index.html`). Crie também o arquivo `.github/workflows/pages.yml`:
 
 ```yaml
 name: Publicar no GitHub Pages
