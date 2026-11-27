@@ -13,7 +13,7 @@
 | Data | O que acontece |
 |---|---|
 | **04/12** | Acompanhamento do projeto |
-| **13/12** | Apresentação final |
+| **15/12** | Apresentação final |
 
 ## Entrega pelo GitHub
 
