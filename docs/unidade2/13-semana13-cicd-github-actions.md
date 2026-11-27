@@ -250,6 +250,24 @@ jobs:
 - **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
 - **`run`** — executa um comando shell diretamente.
 
+## Do commit ao workflow
+
+Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
+
+```bash
+# 1. Crie a pasta e o arquivo de workflow no seu projeto
+mkdir .github\workflows
+# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
+code .github/workflows/ci.yml
+
+# 2. Adicione, faça commit e envie para o GitHub
+git add .github/workflows/ci.yml
+git commit -m "Adiciona pipeline de CI"
+git push
+```
+
+Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
+
 ## Automatizando o deploy com GitHub Actions
 
 Em vez de configurar o Pages à mão, dá para automatizar o deploy da página da seção "Publicando uma página com GitHub Pages" com um workflow do GitHub Actions (`actions/deploy-pages`), o que combina com o tema da semana: a cada `push` no `main`, o pipeline publica a página sozinho.
@@ -312,24 +330,6 @@ Pontos para observar:
 - **`permissions`**: o workflow precisa de permissão para escrever no Pages. Sem isso, o deploy falha.
 - **`path: site`**: só o conteúdo dessa pasta é publicado, e não o repositório inteiro.
 - **`environment`**: registra cada publicação na aba **Deployments** do repositório.
-
-## Do commit ao workflow
-
-Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
-
-```bash
-# 1. Crie a pasta e o arquivo de workflow no seu projeto
-mkdir .github\workflows
-# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
-code .github/workflows/ci.yml
-
-# 2. Adicione, faça commit e envie para o GitHub
-git add .github/workflows/ci.yml
-git commit -m "Adiciona pipeline de CI"
-git push
-```
-
-Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompanhar a execução do workflow em tempo real.
 
 ## A mesma página em um container
 
