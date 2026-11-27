@@ -150,9 +150,6 @@ mkdir ~/meu-projeto-ci && cd ~/meu-projeto-ci
 git init
 echo "# Meu projeto CI" > README.md
 
-# Arquivos que nunca devem ir para o Git
-printf ".env\n__pycache__/\nnode_modules/\n" > .gitignore
-
 git add .
 git commit -m "Primeiro commit"
 
@@ -183,16 +180,6 @@ No GitHub, aparece o botão **Compare & pull request**. Abra o PR, peça a revis
 git switch main
 git pull
 ```
-
-### Problemas comuns
-
-| Mensagem | Causa e solução |
-|---|---|
-| `Permission denied (publickey)` | A chave pública não foi adicionada ao GitHub, ou a URL do remote é SSH sem chave configurada. Refaça a Opção A e teste com `ssh -T git@github.com` |
-| `Authentication failed` (HTTPS) | Você usou a senha da conta. Use o token (Opção B) |
-| `rejected ... fetch first` | Há commits no GitHub que você não tem. Rode `git pull` e tente o `push` de novo |
-| `Author identity unknown` | Faltou configurar `user.name` e `user.email` |
-| `fatal: not a git repository` | Você não está dentro da pasta do repositório. Use `cd` |
 
 ## Do commit ao workflow
 
