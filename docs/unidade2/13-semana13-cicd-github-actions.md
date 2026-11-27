@@ -9,7 +9,7 @@ O GitHub Actions só dispara quando o código chega ao GitHub. Por isso, antes d
 - **Git** é o programa de controle de versão que roda na sua máquina.
 - **GitHub** é o serviço na internet que guarda os repositórios e executa o GitHub Actions.
 
-> **Nesta semana, não use o WSL2.** Faça tudo direto na sua máquina (a máquina hospedeira). Os exemplos abaixo supõem **Windows**; em macOS e Linux, os comandos do Git são os mesmos.
+> **Nesta semana, não use o WSL2.** Faça tudo direto na sua máquina (a máquina hospedeira), usando o **terminal integrado do VS Code** (menu **Terminal, New Terminal**, ou `Ctrl + '`). No Windows, ele abre o **PowerShell** por padrão, e os comandos abaixo foram escritos para ele. Em macOS e Linux, os comandos do Git são os mesmos.
 
 ### Instalar e se identificar
 
@@ -19,7 +19,7 @@ No Windows, instale o **Git for Windows** (https://git-scm.com/download/win) ou 
 winget install --id Git.Git -e
 ```
 
-Feche e abra o terminal de novo. Os comandos desta semana funcionam no **Git Bash** (instalado junto com o Git) e, em sua maioria, no PowerShell. Onde houver diferença, o texto avisa.
+Depois da instalação, **feche e abra o VS Code de novo** para que o terminal reconheça o comando `git`.
 
 ```bash
 git --version
@@ -44,10 +44,7 @@ O GitHub **não aceita mais a senha da conta** para enviar código pelo terminal
 ssh-keygen -t ed25519 -C "seu-email@exemplo.com"
 
 # 2. Mostrar a chave PÚBLICA e copiar todo o texto
-# (Git Bash)
 cat ~/.ssh/id_ed25519.pub
-# (PowerShell)
-type $env:USERPROFILE\.ssh\id_ed25519.pub
 ```
 
 3. No GitHub, acesse **Settings, SSH and GPG keys, New SSH key**, dê um nome (por exemplo, "Notebook pessoal") e cole a chave pública.
@@ -110,9 +107,11 @@ gh auth status
 2. No terminal:
 
 ```bash
-mkdir meu-projeto-ci && cd meu-projeto-ci
+mkdir meu-projeto-ci
+cd meu-projeto-ci
+code .   # abre a pasta em uma nova janela do VS Code; continue no terminal dessa janela
 git init
-echo "# Meu projeto CI" > README.md
+# Crie o arquivo README.md no VS Code, escreva uma linha (por exemplo, # Meu projeto CI) e salve
 
 git add .
 git commit -m "Primeiro commit"
@@ -200,7 +199,7 @@ Não há um "comando" para rodar o GitHub Actions localmente: ele roda automatic
 
 ```bash
 # 1. Crie a pasta e o arquivo de workflow no seu projeto
-mkdir -p .github/workflows
+mkdir .github\workflows
 # crie e edite o arquivo ci.yml no VS Code ou no Bloco de Notas
 code .github/workflows/ci.yml
 
