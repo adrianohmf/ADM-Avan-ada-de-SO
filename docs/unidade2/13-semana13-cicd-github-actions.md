@@ -323,12 +323,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -341,6 +337,13 @@ jobs:
         with:
           path: site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v4
@@ -360,6 +363,7 @@ Pontos para observar:
 
 - **`permissions`**: o workflow precisa de permissão para escrever no Pages. Sem isso, o deploy falha.
 - **`path: site`**: só o conteúdo dessa pasta é publicado, e não o repositório inteiro.
+- **Dois jobs (`build` e `deploy`)**: o `build` empacota a página e só depois o `deploy` publica (`needs: build`). Separar os dois garante que o pacote já esteja pronto quando o deploy o procura. Juntar tudo em um único job pode causar o erro `No artifacts named "github-pages" were found`.
 - **`environment`**: registra cada publicação na aba **Deployments** do repositório.
 
 ## A mesma página em um container
