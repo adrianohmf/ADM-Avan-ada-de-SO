@@ -217,7 +217,7 @@ Não há um "comando" para rodar o GitHub Actions localmente: ele roda automatic
 ```bash
 # 1. Crie a pasta e o arquivo de workflow no seu projeto
 mkdir .github\workflows
-# crie e edite o arquivo ci.yml no VS Code ou no Bloco de Notas
+# abre o arquivo ci.yml no VS Code: copie para ele o exemplo da seção "Estrutura de um workflow" e salve
 code .github/workflows/ci.yml
 
 # 2. Adicione, faça commit e envie para o GitHub
