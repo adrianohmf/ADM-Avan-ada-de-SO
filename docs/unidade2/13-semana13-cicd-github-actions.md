@@ -129,11 +129,15 @@ git init
 git add .
 git commit -m "Primeiro commit"
 
-# Conectar ao repositório criado (use a URL SSH ou HTTPS, conforme a opção escolhida)
-git remote add origin git@github.com:SEU-USUARIO/meu-projeto-ci.git
+# Conectar ao repositório criado.
+# O endereço precisa combinar com a opção de login escolhida acima:
+#   Opções B, C e D (token, gh, VS Code): endereço HTTPS
+#   Opção A (chave SSH): endereço SSH, git@github.com:SEU-USUARIO/meu-projeto-ci.git
+git remote add origin https://github.com/SEU-USUARIO/meu-projeto-ci.git
 git branch -M main
 git push -u origin main
 ```
+
 
 Atualize a página do repositório no GitHub e confira se os arquivos apareceram.
 
