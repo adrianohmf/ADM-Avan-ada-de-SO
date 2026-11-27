@@ -201,9 +201,58 @@ O **GitHub Pages** publica páginas estáticas (HTML, CSS e JavaScript) direto d
 3. Em **Build and deployment**, escolha **Deploy from a branch**, selecione a branch `main` e a pasta `/ (root)` e clique em **Save**.
 4. Em um ou dois minutos, o endereço da página aparece nessa tela.
 
-### Automatizando o deploy com GitHub Actions
+## Teoria
 
-Dá ainda para automatizar o deploy com um workflow do GitHub Actions (`actions/deploy-pages`), o que combina com o tema da semana: a cada `push` no `main`, o pipeline publica a página sozinho.
+**CI/CD** significa **Integração Contínua** (Continuous Integration) e **Entrega/Implantação Contínua** (Continuous Delivery/Deployment):
+
+- **Integração Contínua**: toda vez que um código é enviado ao repositório, ele é automaticamente construído e testado — detectando problemas cedo, antes de chegarem a produção.
+- **Entrega/Implantação Contínua**: o processo de levar essa mudança, já validada, até o ambiente de produção — de forma automatizada, em vez de manual.
+
+![Pipeline de CI/CD](../../images/cicd_pipeline.png)
+
+O **GitHub Actions** é a ferramenta de CI/CD integrada ao GitHub. Um workflow é definido em um arquivo YAML dentro de `.github/workflows/`, e é disparado por eventos do repositório (um `push`, um `pull request`, etc.).
+
+## Estrutura de um workflow
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar os testes
+        run: pytest
+```
+
+- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
+- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
+- **`steps`** — a sequência de passos de um job, executados em ordem.
+- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
+- **`run`** — executa um comando shell diretamente.
+
+## Automatizando o deploy com GitHub Actions
+
+Em vez de configurar o Pages à mão, dá para automatizar o deploy da página da seção "Publicando uma página com GitHub Pages" com um workflow do GitHub Actions (`actions/deploy-pages`), o que combina com o tema da semana: a cada `push` no `main`, o pipeline publica a página sozinho.
 
 1. Em **Settings, Pages**, na opção **Source**, escolha **GitHub Actions**.
 2. Crie a pasta `site/` e mova o `index.html` para dentro dela (`mkdir site` e `git mv index.html site/index.html`). Crie também o arquivo `.github/workflows/pages.yml`:
@@ -264,55 +313,6 @@ Pontos para observar:
 - **`path: site`**: só o conteúdo dessa pasta é publicado, e não o repositório inteiro.
 - **`environment`**: registra cada publicação na aba **Deployments** do repositório.
 
-## Teoria
-
-**CI/CD** significa **Integração Contínua** (Continuous Integration) e **Entrega/Implantação Contínua** (Continuous Delivery/Deployment):
-
-- **Integração Contínua**: toda vez que um código é enviado ao repositório, ele é automaticamente construído e testado — detectando problemas cedo, antes de chegarem a produção.
-- **Entrega/Implantação Contínua**: o processo de levar essa mudança, já validada, até o ambiente de produção — de forma automatizada, em vez de manual.
-
-![Pipeline de CI/CD](../../images/cicd_pipeline.png)
-
-O **GitHub Actions** é a ferramenta de CI/CD integrada ao GitHub. Um workflow é definido em um arquivo YAML dentro de `.github/workflows/`, e é disparado por eventos do repositório (um `push`, um `pull request`, etc.).
-
-## Estrutura de um workflow
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  build-e-testes:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Baixar o código do repositório
-        uses: actions/checkout@v4
-
-      - name: Configurar o Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Instalar dependências
-        run: pip install -r requirements.txt
-
-      - name: Rodar os testes
-        run: pytest
-```
-
-- **`on`** — define os eventos que disparam o workflow (aqui, `push` ou `pull request` na branch `main`).
-- **`jobs`** — um workflow pode ter um ou mais jobs, cada um rodando em uma máquina virtual própria (`runs-on`).
-- **`steps`** — a sequência de passos de um job, executados em ordem.
-- **`uses`** — reutiliza uma *action* pronta, feita pela comunidade ou pelo próprio GitHub (ex.: `actions/checkout` baixa o código do repositório para a máquina do workflow).
-- **`run`** — executa um comando shell diretamente.
-
 ## Do commit ao workflow
 
 Não há um "comando" para rodar o GitHub Actions localmente: ele roda automaticamente nos servidores do GitHub sempre que o evento configurado acontece. Com o Git configurado, o fluxo típico é:
@@ -333,7 +333,7 @@ Depois do `push`, acesse a aba **Actions** do repositório no GitHub para acompa
 
 ## A mesma página em um container
 
-O GitHub Pages hospeda a página para você. Com Docker, **você** empacota a página junto com o servidor web e a executa onde quiser. O `index.html` é o mesmo da seção anterior, guardado na pasta `site/`. O que muda é quem serve o arquivo: um container com **Nginx**.
+O GitHub Pages hospeda a página para você. Com Docker, **você** empacota a página junto com o servidor web e a executa onde quiser. O `index.html` é o mesmo da página do GitHub Pages, guardado na pasta `site/`. O que muda é quem serve o arquivo: um container com **Nginx**.
 
 Na raiz do repositório, crie o arquivo `Dockerfile`:
 
